@@ -1,0 +1,113 @@
+package org.skyline.tools.es
+
+import com.alibaba.fastjson.JSONObject
+import org.apache.commons.logging.LogFactory
+import org.apache.spark.sql.SparkSession
+import org.apache.spark.{Partitioner, TaskContext}
+import org.elasticsearch.common.math.MathUtils
+
+/**
+  * @author Sean Liu
+  * @date 2019-09-17
+  */
+object Hive2ES {
+  @transient private lazy val log = LogFactory.getLog(getClass)
+
+  def main(args: Array[String]): Unit = {
+
+    try {
+      val config = parseArgs(args)
+
+      val spark = SparkSession
+        .builder()
+        .appName("Hive2ES tools offline")
+        .enableHiveSupport()
+        .master("local[*]")
+        .getOrCreate()
+
+      val sc = spark.sparkContext
+
+      val configB = sc.broadcast(config)
+
+      val hadoopConfig = sc.broadcast(null)
+
+      val data = spark.read.option("header", "true").csv("/Users/sean/data/stock/stock_basic.csv").cache()
+
+      val docs = data.rdd.map(row => {
+        val jo = new JSONObject()
+        row.schema.fields.foreach(field => {
+          jo.put(field.name, row.getAs(field.name))
+        })
+        (jo.getString("code"), jo)
+      }).partitionBy(new ESHashPartitioner(6))
+
+      docs.foreachPartition(itDocs => {
+        val partitionId = TaskContext.get.partitionId
+        val esContainer = new ESContainer(configB.value, hadoopConfig.value, partitionId)
+        esContainer.createIndex()
+        itDocs.foreach(doc => {
+          esContainer.put(doc._2, doc._1)
+        })
+        esContainer.cleanUp()
+      })
+    } catch {
+      case e: IllegalArgumentException =>
+    }
+
+  }
+
+  class ESHashPartitioner(partitions: Int) extends Partitioner {
+    require(partitions >= 0, s"Number of partitions ($partitions) cannot be negative.")
+
+    def numPartitions: Int = partitions
+
+    def getPartition(key: Any): Int = key match {
+      case null => 0
+      case x: String => MathUtils.mod(Murmur3HashFunction.hash(x), numPartitions)
+      case _ => MathUtils.mod(key.hashCode, numPartitions)
+    }
+
+    override def equals(other: Any): Boolean = other match {
+      case h: ESHashPartitioner =>
+        h.numPartitions == numPartitions
+      case _ =>
+        false
+    }
+
+    override def hashCode: Int = numPartitions
+  }
+
+  case class Config(
+                     hiveTable: String = "",
+                     numShards: Int = 3,
+                     numN: Int = 4,
+                     jsonSource: Boolean = false,
+                     indexName: String = "test2",
+                     typeName: String = "test",
+                     alias: String = "",
+                     hdfsWorkDir: String = "/tmp/hive2es",
+                     localWorkDir: String = "/Users/sean/data/es",
+                     indexSettings: String = "",
+                     indexMapping: String = ""
+                   )
+
+  def parseArgs(args: Array[String]): Config = {
+    val parser = new scopt.OptionParser[Config]("hive2es") {
+      head("hive2es", "1.0")
+
+      opt[String]('t', "hive-table").required().action((x, c) =>
+        c.copy(hiveTable = x)).text("Source hive table")
+
+      opt[Int]('s', "number-of-shards").required().action((x, c) =>
+        c.copy(numShards = x)).text("Number of ES Index Shards")
+    }
+
+    parser.parse(args, Config()) match {
+      case Some(config) =>
+        config
+      case None =>
+        Config()
+    }
+  }
+
+}
