@@ -7,6 +7,7 @@ import java.io.IOException;
 import java.io.OutputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.Paths;
 import org.apache.commons.compress.archivers.ArchiveEntry;
 import org.apache.commons.compress.archivers.zip.Zip64Mode;
 import org.apache.commons.compress.archivers.zip.ZipArchiveEntry;
@@ -74,5 +75,19 @@ public class CompressionUtils {
         }
       }
     }
+  }
+
+  public static void zipSubFolder(Path parent,String rootDirName) throws IOException {
+    Files.list(parent).forEach(p -> {
+      try {
+        zip(p, Paths.get(rootDirName + "_" + p.toString() + ".zip"), rootDirName + "_" + p.getFileName().toString());
+      } catch (IOException e) {
+        e.printStackTrace();
+      }
+    });
+  }
+
+  public static void main(String[] args) throws IOException {
+    zipSubFolder(Paths.get("/Users/sean/data/es/0/elasticsearch_0/nodes/0/indices/test2"),"p0");
   }
 }

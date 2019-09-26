@@ -25,11 +25,10 @@ object Hive2ES {
         .master("local[*]")
         .getOrCreate()
 
+
       val sc = spark.sparkContext
 
       val configB = sc.broadcast(config)
-
-      val hadoopConfig = sc.broadcast(null)
 
       val data = spark.read.option("header", "true").csv("/Users/sean/data/stock/stock_basic.csv").cache()
 
@@ -43,13 +42,19 @@ object Hive2ES {
 
       docs.foreachPartition(itDocs => {
         val partitionId = TaskContext.get.partitionId
-        val esContainer = new ESContainer(configB.value, hadoopConfig.value, partitionId)
-        esContainer.createIndex()
-        itDocs.foreach(doc => {
-          esContainer.put(doc._2, doc._1)
-        })
-        esContainer.cleanUp()
+        val esContainer = new ESContainer(configB.value, partitionId)
+        try {
+          esContainer.createIndex()
+          itDocs.foreach(doc => {
+            esContainer.put(doc._2, doc._1)
+          })
+        } finally {
+          esContainer.cleanUp()
+        }
+
       })
+
+
     } catch {
       case e: IllegalArgumentException =>
     }
@@ -85,7 +90,7 @@ object Hive2ES {
                      indexName: String = "test2",
                      typeName: String = "test",
                      alias: String = "",
-                     hdfsWorkDir: String = "/tmp/hive2es",
+                     hdfsWorkDir: String = "/Users/sean/data/es/hdfs",
                      localWorkDir: String = "/Users/sean/data/es",
                      indexSettings: String = "",
                      indexMapping: String = ""

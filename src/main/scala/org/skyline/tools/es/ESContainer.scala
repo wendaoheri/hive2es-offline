@@ -20,7 +20,7 @@ import org.skyline.tools.es.Hive2ES.Config
   * @author Sean Liu
   * @date 2019-09-17
   */
-class ESContainer(val config: Config, val hadoopConfig: Configuration, val partitionId: Int) {
+class ESContainer(val config: Config,val partitionId: Int) {
 
   @transient private lazy val log = LogFactory.getLog(getClass)
   private val workDir = s"${config.localWorkDir}/$partitionId"
@@ -39,7 +39,7 @@ class ESContainer(val config: Config, val hadoopConfig: Configuration, val parti
   }
   private val clusterName = s"elasticsearch_${partitionId}"
   private val zipSource = Paths.get(config.localWorkDir, partitionId.toString, clusterName, "nodes/0/indices", config.indexName)
-  private val zipDest = Paths.get(config.localWorkDir, "bundles", s"${config.indexName}_${partitionId}.zip")
+  //  private val zipDest = Paths.get(config.localWorkDir, "bundles", s"${config.indexName}_${partitionId}.zip")
 
   private lazy val node = NodeBuilder.nodeBuilder()
     .client(false)
@@ -75,7 +75,7 @@ class ESContainer(val config: Config, val hadoopConfig: Configuration, val parti
     .setBackoffPolicy(BackoffPolicy.exponentialBackoff(TimeValue.timeValueSeconds(100), 3))
     .build()
 
-  private lazy val fs = FileSystem.get(hadoopConfig)
+  private lazy val fs = FileSystem.get(new Configuration())
 
   def put(doc: JSONObject, id: String, routing: String = ""): Unit = {
     bulkProcessor.add(new IndexRequest(config.indexName, config.typeName, id).source(doc))
@@ -104,13 +104,23 @@ class ESContainer(val config: Config, val hadoopConfig: Configuration, val parti
     node.close()
   }
 
-  private def uploadToHdfs(): Unit = {
-
+  private def uploadToHdfs(src: Path, dest: Path): Unit = {
+    if (!fs.exists(new org.apache.hadoop.fs.Path(dest.getParent.toString))) {
+      log.info(s"hdfs path ${dest.getParent} not exist and create it")
+      fs.mkdirs(new org.apache.hadoop.fs.Path(dest.getParent.toString))
+    }
+    fs.copyFromLocalFile(true, true, new org.apache.hadoop.fs.Path(src.toString), new org.apache.hadoop.fs.Path(dest.toString))
   }
 
-  private def zipBundle(): Unit = {
-    log.info(s"zip index bundle from $zipSource to $zipDest")
-    CompressionUtils.zip(zipSource, zipDest, s"${config.indexName}_${partitionId}")
+  private def compressIndexAndUpload(): Unit = {
+    import scala.collection.JavaConversions._
+    for (p <- Files.list(zipSource).iterator()) {
+      val folderName = p.getFileName.toString
+      val zipFileName = s"p${partitionId}_$folderName.zip"
+      log.info(s"zip index partition folder from $p to ${zipSource.resolve(zipFileName)}")
+      CompressionUtils.zip(p, zipSource.resolve(zipFileName), s"p_$partitionId")
+      uploadToHdfs(zipSource.resolve(zipFileName), Paths.get(config.hdfsWorkDir, config.indexName, folderName, zipFileName))
+    }
   }
 
   private def deleteWorkDir(): Unit = {
@@ -122,8 +132,7 @@ class ESContainer(val config: Config, val hadoopConfig: Configuration, val parti
   def cleanUp(): Unit = {
     try {
       close()
-      zipBundle()
-      uploadToHdfs()
+      compressIndexAndUpload()
     } finally {
       deleteWorkDir()
     }
