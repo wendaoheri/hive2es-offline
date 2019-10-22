@@ -65,7 +65,7 @@ class ESContainer(val config: Config, val partitionId: Int) {
         log.error(response.buildFailureMessage())
       }
       val total = counter.addAndGet(request.numberOfActions())
-      log.info(s"partition $partitionId start bulk request size : ${request.numberOfActions()} and total $total")
+      log.info(s"partition $partitionId start bulk request size : ${request.numberOfActions()} and total $total and took time : ${response.getTookInMillis} ms.")
     }
 
     override def afterBulk(executionId: Long, request: BulkRequest, failure: Throwable): Unit = {
