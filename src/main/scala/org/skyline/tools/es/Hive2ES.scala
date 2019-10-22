@@ -31,9 +31,8 @@ object Hive2ES {
 
       val data = spark.read.orc("/Users/sean/data/customer/part-01008-5414b98a-fa49-457f-aa6c-b70b5e9721e5-c000.snappy.orc")
       val mapping = Files.readAllLines(Paths.get("/Users/sean/data/customer/mapping.json")).get(0)
-      val config = Config(indexName = "test", typeName = "test", numShards = 1, indexMapping = mapping)
+      val config = Config(indexName = "test", typeName = "test", numShards = 6, indexMapping = mapping)
       val configB = sc.broadcast(config)
-      data.rdd.map(r => (r.getAs[String]("cust_code"),r)).partitionBy(new ESHashPartitioner(1080))
 
       data.rdd.coalesce(1, false).foreachPartition(docsP => {
         val partitionId = TaskContext.get.partitionId()
@@ -46,30 +45,29 @@ object Hive2ES {
 
       })
 
-      data.toDF("cust_code","content").write.saveAsTable("app.ui_index_")
 
-      //      val docs = data.rdd.map(row => {
-      //        val jo = new JSONObject()
-      //        row.schema.fields.foreach(field => {
-      //          jo.put(field.name, row.getAs(field.name))
-      //        })
-      //        (jo.getString("code"), jo)
-      //      }).partitionBy(new ESHashPartitioner(6))
-      //
-      //      docs.foreachPartition(itDocs => {
-      //        val partitionId = TaskContext.get.partitionId
-      //        val esContainer = new ESContainer(configB.value, partitionId)
-      //        try {
-      //          esContainer.createIndex()
-      //          esContainer.putMapping()
-      //          itDocs.foreach(doc => {
-      //            esContainer.put(doc._2, doc._1)
-      //          })
-      //        } finally {
-      //          esContainer.cleanUp()
-      //        }
-      //
-      //      })
+//      val docs = data.rdd.map(row => {
+//        val jo = new JSONObject()
+//        row.schema.fields.foreach(field => {
+//          jo.put(field.name, row.getAs(field.name))
+//        })
+//        (jo.getString("code"), jo)
+//      }).partitionBy(new ESHashPartitioner(6))
+//
+//      docs.foreachPartition(itDocs => {
+//        val partitionId = TaskContext.get.partitionId
+//        val esContainer = new ESContainer(configB.value, partitionId)
+//        try {
+//          esContainer.createIndex()
+//          esContainer.putMapping()
+//          itDocs.foreach(doc => {
+//            esContainer.put(doc._2, doc._1)
+//          })
+//        } finally {
+//          esContainer.cleanUp()
+//        }
+//
+//      })
 
 
     } catch {
@@ -109,6 +107,7 @@ object Hive2ES {
                      alias: String = "",
                      hdfsWorkDir: String = "/Users/sean/data/es/hdfs",
                      localWorkDir: String = "/Users/sean/data/es",
+                     localDataDir: String = "/Users/sean/data/es,/Users/sean/data/es2",
                      indexSettings: String = "",
                      indexMapping: String = "",
                      indexMappingObj: JSONObject = new JSONObject()

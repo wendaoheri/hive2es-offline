@@ -3,7 +3,6 @@ package org.skyline.tools.es
 import java.nio.file._
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicLong
-import java.util.stream.Collectors
 
 import com.alibaba.fastjson.{JSON, JSONObject}
 import org.apache.commons.io.FileUtils
@@ -25,6 +24,8 @@ class ESContainer(val config: Config, val partitionId: Int) {
 
   @transient private lazy val log = LogFactory.getLog(getClass)
   private val workDir = s"${config.localWorkDir}/$partitionId"
+  private val dataDirs = config.localDataDir.split(",").map(dir => s"${dir}/${partitionId}")
+
   private lazy val settings = {
 
     Settings
@@ -32,7 +33,7 @@ class ESContainer(val config: Config, val partitionId: Int) {
       .put("http.enabled", false)
       .put("node.name", s"es_node_$partitionId")
       .put("path.home", workDir)
-      .put("path.data", workDir)
+      .put("path.data", dataDirs.mkString(","))
       .put("Dlog4j2.enable.threadlocals", false)
       .put("cluster.routing.allocation.disk.threshold_enabled", false)
       .putArray("discovery.zen.ping.unicast.hosts")
@@ -40,7 +41,7 @@ class ESContainer(val config: Config, val partitionId: Int) {
   }
 
   private val clusterName = s"elasticsearch_${partitionId}"
-  private val zipSource = Paths.get(config.localWorkDir, partitionId.toString, clusterName, "nodes/0/indices", config.indexName)
+  private val zipSources = dataDirs.map(dir => Paths.get(dir, clusterName, "nodes/0/indices", config.indexName))
   //  private val zipDest = Paths.get(config.localWorkDir, "bundles", s"${config.indexName}_${partitionId}.zip")
 
   private lazy val node = NodeBuilder.nodeBuilder()
@@ -129,14 +130,16 @@ class ESContainer(val config: Config, val partitionId: Int) {
 
   private def compressIndexAndUpload(): Unit = {
     import scala.collection.JavaConversions._
-//    val zipSourceList = Files.list(zipSource).collect(Collectors.toList)
-    for (p <- Files.list(zipSource).iterator()) {
-      val folderName = p.getFileName.toString
-      val zipFileName = s"p${partitionId}_$folderName.zip"
-      log.info(s"zip index partition folder from $p to ${zipSource.resolve(zipFileName)}")
-      CompressionUtils.zip(p, zipSource.resolve(zipFileName), s"p_$partitionId")
-      uploadToHdfs(zipSource.resolve(zipFileName), Paths.get(config.hdfsWorkDir, config.indexName, folderName, zipFileName))
-    }
+    zipSources.foreach(zipSource => {
+      for (p <- Files.list(zipSource).iterator()) {
+        val folderName = p.getFileName.toString
+        val zipFileName = s"p${partitionId}_$folderName.zip"
+        log.info(s"zip index partition folder from $p to ${zipSource.resolve(zipFileName)}")
+        CompressionUtils.zip(p, zipSource.resolve(zipFileName), s"p_$partitionId")
+        uploadToHdfs(zipSource.resolve(zipFileName), Paths.get(config.hdfsWorkDir, config.indexName, folderName, zipFileName))
+      }
+    })
+
   }
 
   private def deleteWorkDir(): Unit = {
@@ -148,9 +151,9 @@ class ESContainer(val config: Config, val partitionId: Int) {
   def cleanUp(): Unit = {
     try {
       close()
-//      compressIndexAndUpload()
+      //      compressIndexAndUpload()
     } finally {
-//      deleteWorkDir()
+      //      deleteWorkDir()
     }
 
 
