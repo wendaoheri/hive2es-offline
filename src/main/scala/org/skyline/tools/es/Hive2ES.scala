@@ -1,6 +1,8 @@
 package org.skyline.tools.es
 
-import com.alibaba.fastjson.JSONObject
+import java.nio.file.{Files, Paths}
+
+import com.alibaba.fastjson.{JSON, JSONObject}
 import org.apache.commons.logging.LogFactory
 import org.apache.spark.sql.SparkSession
 import org.apache.spark.{Partitioner, TaskContext}
@@ -14,45 +16,60 @@ object Hive2ES {
   @transient private lazy val log = LogFactory.getLog(getClass)
 
   def main(args: Array[String]): Unit = {
-
     try {
-      val config = parseArgs(args)
+      //      val config = parseArgs(args)
 
       val spark = SparkSession
         .builder()
         .appName("Hive2ES tools offline")
         .enableHiveSupport()
-        .master("local[*]")
+        .master("local[1]")
         .getOrCreate()
 
 
       val sc = spark.sparkContext
 
+      val data = spark.read.orc("/Users/sean/data/customer/part-01008-5414b98a-fa49-457f-aa6c-b70b5e9721e5-c000.snappy.orc")
+      val mapping = Files.readAllLines(Paths.get("/Users/sean/data/customer/mapping.json")).get(0)
+      val config = Config(indexName = "test", typeName = "test", numShards = 1, indexMapping = mapping)
       val configB = sc.broadcast(config)
+      data.rdd.map(r => (r.getAs[String]("cust_code"),r)).partitionBy(new ESHashPartitioner(1080))
 
-      val data = spark.read.option("header", "true").csv("/Users/sean/data/stock/stock_basic.csv").cache()
-
-      val docs = data.rdd.map(row => {
-        val jo = new JSONObject()
-        row.schema.fields.foreach(field => {
-          jo.put(field.name, row.getAs(field.name))
-        })
-        (jo.getString("code"), jo)
-      }).partitionBy(new ESHashPartitioner(6))
-
-      docs.foreachPartition(itDocs => {
-        val partitionId = TaskContext.get.partitionId
+      data.rdd.coalesce(1, false).foreachPartition(docsP => {
+        val partitionId = TaskContext.get.partitionId()
         val esContainer = new ESContainer(configB.value, partitionId)
-        try {
-          esContainer.createIndex()
-          itDocs.foreach(doc => {
-            esContainer.put(doc._2, doc._1)
-          })
-        } finally {
-          esContainer.cleanUp()
-        }
+        esContainer.createIndex()
+        esContainer.putMapping()
+        docsP.foreach(doc => esContainer.put(JSON.parseObject(doc.getAs[String]("content")),
+          doc.getAs[String]("key"))
+        )
 
       })
+
+      data.toDF("cust_code","content").write.saveAsTable("app.ui_index_")
+
+      //      val docs = data.rdd.map(row => {
+      //        val jo = new JSONObject()
+      //        row.schema.fields.foreach(field => {
+      //          jo.put(field.name, row.getAs(field.name))
+      //        })
+      //        (jo.getString("code"), jo)
+      //      }).partitionBy(new ESHashPartitioner(6))
+      //
+      //      docs.foreachPartition(itDocs => {
+      //        val partitionId = TaskContext.get.partitionId
+      //        val esContainer = new ESContainer(configB.value, partitionId)
+      //        try {
+      //          esContainer.createIndex()
+      //          esContainer.putMapping()
+      //          itDocs.foreach(doc => {
+      //            esContainer.put(doc._2, doc._1)
+      //          })
+      //        } finally {
+      //          esContainer.cleanUp()
+      //        }
+      //
+      //      })
 
 
     } catch {
@@ -93,7 +110,8 @@ object Hive2ES {
                      hdfsWorkDir: String = "/Users/sean/data/es/hdfs",
                      localWorkDir: String = "/Users/sean/data/es",
                      indexSettings: String = "",
-                     indexMapping: String = ""
+                     indexMapping: String = "",
+                     indexMappingObj: JSONObject = new JSONObject()
                    )
 
   def parseArgs(args: Array[String]): Config = {

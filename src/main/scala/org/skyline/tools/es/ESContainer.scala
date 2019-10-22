@@ -3,8 +3,9 @@ package org.skyline.tools.es
 import java.nio.file._
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicLong
+import java.util.stream.Collectors
 
-import com.alibaba.fastjson.JSONObject
+import com.alibaba.fastjson.{JSON, JSONObject}
 import org.apache.commons.io.FileUtils
 import org.apache.commons.logging.LogFactory
 import org.apache.hadoop.conf.Configuration
@@ -20,7 +21,7 @@ import org.skyline.tools.es.Hive2ES.Config
   * @author Sean Liu
   * @date 2019-09-17
   */
-class ESContainer(val config: Config,val partitionId: Int) {
+class ESContainer(val config: Config, val partitionId: Int) {
 
   @transient private lazy val log = LogFactory.getLog(getClass)
   private val workDir = s"${config.localWorkDir}/$partitionId"
@@ -37,6 +38,7 @@ class ESContainer(val config: Config,val partitionId: Int) {
       .putArray("discovery.zen.ping.unicast.hosts")
       .build()
   }
+
   private val clusterName = s"elasticsearch_${partitionId}"
   private val zipSource = Paths.get(config.localWorkDir, partitionId.toString, clusterName, "nodes/0/indices", config.indexName)
   //  private val zipDest = Paths.get(config.localWorkDir, "bundles", s"${config.indexName}_${partitionId}.zip")
@@ -96,6 +98,19 @@ class ESContainer(val config: Config,val partitionId: Int) {
       .get()
   }
 
+  def putMapping(): Unit = {
+    val root = new JSONObject()
+    root.put("properties", JSON.parseObject(config.indexMapping))
+    disableMeta("_all", root)
+    node.client().admin().indices().preparePutMapping(config.indexName).setType(config.typeName).setSource(root).get
+  }
+
+  def disableMeta(meta: String, mappingRoot: JSONObject): Unit = {
+    val disabled = new JSONObject()
+    disabled.put("enabled", false)
+    mappingRoot.put(meta, disabled)
+  }
+
   private def close(): Unit = {
     bulkProcessor.flush()
     bulkProcessor.awaitClose(10, TimeUnit.MINUTES)
@@ -114,6 +129,7 @@ class ESContainer(val config: Config,val partitionId: Int) {
 
   private def compressIndexAndUpload(): Unit = {
     import scala.collection.JavaConversions._
+//    val zipSourceList = Files.list(zipSource).collect(Collectors.toList)
     for (p <- Files.list(zipSource).iterator()) {
       val folderName = p.getFileName.toString
       val zipFileName = s"p${partitionId}_$folderName.zip"
@@ -132,9 +148,9 @@ class ESContainer(val config: Config,val partitionId: Int) {
   def cleanUp(): Unit = {
     try {
       close()
-      compressIndexAndUpload()
+//      compressIndexAndUpload()
     } finally {
-      deleteWorkDir()
+//      deleteWorkDir()
     }
 
 
