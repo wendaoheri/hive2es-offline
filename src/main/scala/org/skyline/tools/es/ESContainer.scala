@@ -24,7 +24,7 @@ class ESContainer(val config: Config, val partitionId: Int) {
 
   @transient private lazy val log = LogFactory.getLog(getClass)
   private val workDir = s"${config.localWorkDir}/$partitionId"
-  private val dataDirs = config.localDataDir.split(",").map(dir => s"${dir}/${partitionId}")
+  private val dataDirs = config.localDataDir.split(",").map(dir => s"${dir}/${config.indexName}/${partitionId}")
 
   private lazy val settings = {
 
