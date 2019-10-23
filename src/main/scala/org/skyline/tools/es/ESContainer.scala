@@ -84,7 +84,10 @@ class ESContainer(val config: Config, val partitionId: Int) {
     bulkProcessor.add(new IndexRequest(config.indexName, config.typeName, id).source(doc))
   }
 
-  def createIndex(): Unit = {
+  def createIndex(): Boolean = {
+    if (indexExists()) {
+      deleteIndex()
+    }
     node.client().admin().indices().prepareCreate(config.indexName)
       .setSettings(
         s"""
@@ -97,6 +100,15 @@ class ESContainer(val config: Config, val partitionId: Int) {
            |}
          """.stripMargin)
       .get()
+      .isAcknowledged
+  }
+
+  def indexExists(): Boolean = {
+    node.client().admin().indices().prepareExists(config.indexName).get().isExists
+  }
+
+  def deleteIndex(): Boolean = {
+    node.client().admin().indices().prepareDelete(config.indexName).get().isAcknowledged
   }
 
   def putMapping(): Unit = {
@@ -143,20 +155,20 @@ class ESContainer(val config: Config, val partitionId: Int) {
   }
 
   private def deleteWorkDir(): Unit = {
-    // TODO delete failed
-    log.info(s"delete work dir $workDir")
-    FileUtils.deleteDirectory(Paths.get(workDir).toFile)
+    dataDirs.foreach(dir => {
+      log.info(s"delete data dir $dir")
+      FileUtils.deleteDirectory(Paths.get(dir).toFile)
+    })
+
   }
 
   def cleanUp(): Unit = {
     try {
       close()
-      //      compressIndexAndUpload()
+      compressIndexAndUpload()
     } finally {
-      //      deleteWorkDir()
+      deleteWorkDir()
     }
-
-
   }
 
 }
