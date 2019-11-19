@@ -4,8 +4,9 @@ import java.nio.file.{Files, Paths}
 
 import com.alibaba.fastjson.{JSON, JSONObject}
 import org.apache.commons.logging.LogFactory
+import org.apache.hadoop.hdfs.server.blockmanagement.BlockManager
 import org.apache.spark.sql.SparkSession
-import org.apache.spark.{Partitioner, TaskContext}
+import org.apache.spark.{Partitioner, SparkEnv, TaskContext}
 import org.elasticsearch.common.math.MathUtils
 
 /**
@@ -33,19 +34,20 @@ object Hive2ES {
       val mapping = Files.readAllLines(Paths.get("/Users/sean/data/customer/mapping.json")).get(0)
       val config = Config(indexName = "test", typeName = "test", numShards = 6, indexMapping = mapping)
       val configB = sc.broadcast(config)
-
       data.rdd.coalesce(1, false).foreachPartition(docsP => {
         val partitionId = TaskContext.get.partitionId()
+
+        TaskContext.get.addTaskCompletionListener(_ => {
+          SparkEnv.get.blockManager.diskBlockManager.getAllBlocks().foreach(blockId => SparkEnv.get.blockManager.removeBlock(blockId))
+        })
+
         val esContainer = new ESContainer(configB.value, partitionId)
         esContainer.createIndex()
         esContainer.putMapping()
         docsP.foreach(doc => esContainer.put(JSON.parseObject(doc.getAs[String]("content")),
           doc.getAs[String]("key"))
         )
-
       })
-
-
 //      val docs = data.rdd.map(row => {
 //        val jo = new JSONObject()
 //        row.schema.fields.foreach(field => {
@@ -107,7 +109,7 @@ object Hive2ES {
                      alias: String = "",
                      hdfsWorkDir: String = "/Users/sean/data/es/hdfs",
                      localWorkDir: String = "/Users/sean/data/es",
-                     localDataDir: String = "/Users/sean/data/es,/Users/sean/data/es2",
+                     localDataDir: String = "/Users/sean/data/es",
                      indexSettings: String = "",
                      indexMapping: String = "",
                      indexMappingObj: JSONObject = new JSONObject()

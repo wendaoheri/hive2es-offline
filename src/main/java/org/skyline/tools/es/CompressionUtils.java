@@ -86,8 +86,5 @@ public class CompressionUtils {
       }
     });
   }
-
-  public static void main(String[] args) throws IOException {
-    zipSubFolder(Paths.get("/Users/sean/data/es/0/elasticsearch_0/nodes/0/indices/test2"),"p0");
-  }
+  
 }

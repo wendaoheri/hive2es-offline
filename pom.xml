@@ -6,7 +6,12 @@
 
   <groupId>org.skyline.tools</groupId>
   <artifactId>hive2es-offline</artifactId>
+  <packaging>pom</packaging>
   <version>1.0-SNAPSHOT</version>
+  <modules>
+    <module>hive2es-offline-server</module>
+    <module>hive2es-offline-spark</module>
+  </modules>
   <properties>
     <scala.version>2.11.8</scala.version>
     <scala.major.version>2.11</scala.major.version>
