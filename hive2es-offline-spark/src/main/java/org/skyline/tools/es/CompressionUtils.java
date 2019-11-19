@@ -1,19 +1,15 @@
 package org.skyline.tools.es;
 
-import java.io.BufferedInputStream;
-import java.io.BufferedOutputStream;
-import java.io.File;
-import java.io.IOException;
-import java.io.OutputStream;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
 import org.apache.commons.compress.archivers.ArchiveEntry;
 import org.apache.commons.compress.archivers.zip.Zip64Mode;
 import org.apache.commons.compress.archivers.zip.ZipArchiveEntry;
 import org.apache.commons.compress.archivers.zip.ZipArchiveInputStream;
 import org.apache.commons.compress.archivers.zip.ZipArchiveOutputStream;
 import org.apache.commons.io.IOUtils;
+
+import java.io.*;
+import java.nio.file.Files;
+import java.nio.file.Path;
 
 /**
  * @author Sean Liu
@@ -76,15 +72,4 @@ public class CompressionUtils {
       }
     }
   }
-
-  public static void zipSubFolder(Path parent,String rootDirName) throws IOException {
-    Files.list(parent).forEach(p -> {
-      try {
-        zip(p, Paths.get(rootDirName + "_" + p.toString() + ".zip"), rootDirName + "_" + p.getFileName().toString());
-      } catch (IOException e) {
-        e.printStackTrace();
-      }
-    });
-  }
-  
 }
