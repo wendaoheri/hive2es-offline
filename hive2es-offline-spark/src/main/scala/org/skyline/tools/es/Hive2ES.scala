@@ -1,11 +1,15 @@
 package org.skyline.tools.es
 
 import com.alibaba.fastjson.{JSON, JSONObject}
+import org.apache.commons.logging.LogFactory
+import org.apache.spark.TaskContext
 import org.apache.spark.sql.SparkSession
 
 import scala.util.Random
 
+
 object Hive2ES {
+  @transient private lazy val log = LogFactory.getLog(getClass)
 
   val argsParser = new scopt.OptionParser[Config]("hive2es offline") {
     head("hive2es offline", "1.0")
@@ -46,6 +50,10 @@ object Hive2ES {
       .action((x, c) => c.copy(alias = x))
       .text("ES index alias")
 
+    opt[String]("mapping")
+      .action((x, c) => c.copy(mapping = x))
+      .text("ES index mapping, json format")
+
     opt[String]("id")
       .action((x, c) => c.copy(id = x))
       .text("ES ID column")
@@ -72,51 +80,80 @@ object Hive2ES {
   }
 
   def main(args: Array[String]): Unit = {
+
     argsParser.parse(args, Config()) match {
-      case Some(config) => {
-        val spark = SparkSession
-          .builder()
-          .appName("Hive2ES tools offline")
-          .enableHiveSupport()
-          .getOrCreate()
-
-        val sc = spark.sparkContext
-        val data = spark.read.table(config.hiveTable).where(s"1 = 1 and ${config.where}")
-
-        val numPartitions = config.numShards * config.partitionMultiples
-        val partitionKey = Some(config.routing).orElse(Some(config.id)).get
-
-        data.rdd.map(row => {
-
-          val doc = if (config.jsonSource) {
-            JSON.parseObject(row.getAs[String](0))
-          } else {
-            val jo = new JSONObject()
-            row.schema.fields.foreach(field => {
-              jo.put(field.name, row.getAs(field.name))
-            })
-            jo
-          }
-
-          val key = if (partitionKey == null) {
-            Random.nextString(20)
-          } else {
-            doc.get(partitionKey).toString
-          }
-
-          (key, doc)
-
-        })
-
-
-      }
-      case _ =>
-        sys.exit(1)
+      case Some(config) => println(config)
+      case _ => sys.exit(1)
     }
 
 
   }
 
+  def run(config: Config): Unit = {
+    val spark = SparkSession
+      .builder()
+      .appName("Hive2ES tools offline")
+      .enableHiveSupport()
+      .getOrCreate()
+
+    val sc = spark.sparkContext
+    val data = spark.read.table(config.hiveTable)
+
+    val numPartitions = config.numShards * config.partitionMultiples
+    val partitionKey = Some(config.routing).orElse(Some(config.id)).get
+
+    val docsWithKey = data.rdd.map(row => {
+
+      val doc = if (config.jsonSource) {
+        JSON.parseObject(row.getAs[String](0))
+      } else {
+        val jo = new JSONObject()
+        row.schema.fields.foreach(field => {
+          jo.put(field.name, row.getAs(field.name))
+        })
+        jo
+      }
+
+      val key = if (partitionKey == null) {
+        Random.nextString(10)
+      } else {
+        doc.get(partitionKey).toString
+      }
+
+      (key, doc)
+
+    })
+
+    val docs = if (config.repartition) {
+      docsWithKey.partitionBy(new ESHashPartitioner(numPartitions)).values
+    } else {
+      docsWithKey.values
+    }
+
+    docs.foreachPartition(docsP => {
+      val partitionId = TaskContext.get().partitionId()
+
+      val esContainer = new ESContainer(config, partitionId)
+
+      try {
+        esContainer.start()
+        esContainer.createIndex()
+        if (config.mapping != null) {
+          esContainer.putMapping(JSON.parseObject(config.mapping))
+        }
+        var count = 0
+        docsP.foreach(doc => {
+          esContainer.put(doc, doc.getString(config.id), doc.getString(config.routing))
+          count += 1
+        })
+        log.info(s"partition $partitionId record size : $count")
+      } finally {
+        esContainer.cleanUp()
+      }
+    })
+
+
+  }
 
   case class Config(
                      hiveTable: String = null,
@@ -128,6 +165,7 @@ object Hive2ES {
                      indexName: String = null,
                      typeName: String = null,
                      alias: String = null,
+                     mapping: String = null,
                      id: String = null,
                      routing: String = null,
                      hdfsWorkDir: String = "/tmp/hive2es",

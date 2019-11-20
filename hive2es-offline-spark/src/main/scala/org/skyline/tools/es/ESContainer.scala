@@ -8,12 +8,12 @@ import java.util.stream.Collectors
 
 import com.alibaba.fastjson.JSONObject
 import org.apache.commons.io.FileUtils
+import org.apache.commons.lang3.StringUtils
 import org.apache.commons.logging.LogFactory
 import org.apache.hadoop.conf.Configuration
 import org.apache.hadoop.fs.FileSystem
 import org.elasticsearch.action.bulk.{BackoffPolicy, BulkProcessor, BulkRequest, BulkResponse}
 import org.elasticsearch.action.index.IndexRequest
-import org.elasticsearch.client.Requests
 import org.elasticsearch.common.settings.Settings
 import org.elasticsearch.common.unit.{ByteSizeUnit, ByteSizeValue, TimeValue}
 import org.elasticsearch.node.NodeBuilder
@@ -133,7 +133,7 @@ class ESContainer(val config: Config, val partitionId: Int) {
   }
 
   def put(doc: JSONObject, id: String, routing: String = ""): Unit = {
-    bulkProcessor.add(new IndexRequest(config.indexName, config.typeName, id).source(doc))
+    bulkProcessor.add(new IndexRequest(config.indexName, config.typeName, id).routing(routing).create(true).source(doc))
   }
 
   def createIndex(): Boolean = {
