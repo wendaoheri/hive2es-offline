@@ -62,7 +62,7 @@ object Hive2ES {
       .text("ES ID column")
 
     opt[String]("routing")
-      .action((x, c) => c.copy(id = x))
+      .action((x, c) => c.copy(routing = x))
       .text("ES Routing column, default same with id if id specified")
 
     opt[String]("hdfs-work-dir")
@@ -108,7 +108,7 @@ object Hive2ES {
     val data = spark.read.table(config.hiveTable).where(whereClause)
 
     val numPartitions = config.numShards * config.partitionMultiples
-    val partitionKey = Some(config.routing).orElse(Some(config.id)).get
+    val partitionKey = Option(config.routing).getOrElse(config.id)
 
     val docsWithKey = data.rdd.map(row => {
 
