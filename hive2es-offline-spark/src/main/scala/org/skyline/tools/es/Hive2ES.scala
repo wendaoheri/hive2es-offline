@@ -83,7 +83,10 @@ object Hive2ES {
   def main(args: Array[String]): Unit = {
 
     argsParser.parse(args, Config()) match {
-      case Some(config) => println(config)
+      case Some(config) => {
+        log.info(config)
+        run(config)
+      }
       case _ => sys.exit(1)
     }
 
