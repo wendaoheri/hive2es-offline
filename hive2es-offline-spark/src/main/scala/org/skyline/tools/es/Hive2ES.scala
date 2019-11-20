@@ -1,6 +1,7 @@
 package org.skyline.tools.es
 
 import com.alibaba.fastjson.{JSON, JSONObject}
+import org.apache.commons.lang3.StringUtils
 import org.apache.commons.logging.LogFactory
 import org.apache.spark.TaskContext
 import org.apache.spark.sql.SparkSession
@@ -97,7 +98,8 @@ object Hive2ES {
       .getOrCreate()
 
     val sc = spark.sparkContext
-    val data = spark.read.table(config.hiveTable)
+    val whereClause = Some(config.where).getOrElse("1 = 1")
+    val data = spark.read.table(config.hiveTable).where(whereClause)
 
     val numPartitions = config.numShards * config.partitionMultiples
     val partitionKey = Some(config.routing).orElse(Some(config.id)).get
