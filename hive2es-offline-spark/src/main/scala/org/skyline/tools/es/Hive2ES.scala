@@ -84,7 +84,7 @@ object Hive2ES {
 
     argsParser.parse(args, Config()) match {
       case Some(config) => {
-        log.info(config)
+        log.info(JSON.toJSONString(config, true))
         run(config)
       }
       case _ => sys.exit(1)
