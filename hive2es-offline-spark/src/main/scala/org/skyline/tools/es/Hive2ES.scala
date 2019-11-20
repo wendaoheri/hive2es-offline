@@ -87,7 +87,7 @@ object Hive2ES {
     argsParser.parse(args, Config()) match {
       case Some(config) => {
         implicit val formats = DefaultFormats
-        log.info(writePretty(config))
+        log.info("Final application config : \n" + writePretty(config))
         run(config)
       }
       case _ => sys.exit(1)
