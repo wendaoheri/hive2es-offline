@@ -1,10 +1,12 @@
 package org.skyline.tools.es
 
 import com.alibaba.fastjson.{JSON, JSONObject}
-import org.apache.commons.lang3.StringUtils
 import org.apache.commons.logging.LogFactory
 import org.apache.spark.TaskContext
 import org.apache.spark.sql.SparkSession
+import org.json4s._
+import org.json4s.jackson.Serialization.writePretty
+
 
 import scala.util.Random
 
@@ -84,7 +86,8 @@ object Hive2ES {
 
     argsParser.parse(args, Config()) match {
       case Some(config) => {
-        log.info(JSON.toJSONString(config, true))
+        implicit val formats = DefaultFormats
+        log.info(writePretty(config))
         run(config)
       }
       case _ => sys.exit(1)
