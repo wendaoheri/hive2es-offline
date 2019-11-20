@@ -11,5 +11,62 @@
 
   <artifactId>hive2es-offline-server</artifactId>
 
+  <description>hive2es offline load plugin</description>
 
+  <properties>
+    <elasticsearch.version>${es.version}</elasticsearch.version>
+    <elasticsearch.plugin.classname>org.skyline.tools.es.plugin.Hive2ESOfflinePlugin
+    </elasticsearch.plugin.classname>
+    <elasticsearch.plugin.name>${project.artifactId}</elasticsearch.plugin.name>
+    <elasticsearch.plugin.jvm>true</elasticsearch.plugin.jvm>
+    <elasticsearch.plugin.isolated>true</elasticsearch.plugin.isolated>
+    <elasticsearch.plugin.site>false</elasticsearch.plugin.site>
+  </properties>
+
+  <dependencies>
+    <dependency>
+      <groupId>org.elasticsearch</groupId>
+      <artifactId>elasticsearch</artifactId>
+      <scope>provided</scope>
+    </dependency>
+  </dependencies>
+  <build>
+    <plugins>
+      <plugin>
+        <artifactId>maven-compiler-plugin</artifactId>
+        <executions>
+          <execution>
+            <phase>compile</phase>
+            <goals>
+              <goal>compile</goal>
+            </goals>
+          </execution>
+        </executions>
+        <configuration>
+          <encoding>UTF-8</encoding>
+          <source>1.8</source>
+          <target>1.8</target>
+        </configuration>
+      </plugin>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-assembly-plugin</artifactId>
+        <configuration>
+          <appendAssemblyId>false</appendAssemblyId>
+          <descriptors>
+            <descriptor>assembly.xml</descriptor>
+          </descriptors>
+        </configuration>
+        <executions>
+          <execution>
+            <id>make-assembly</id>
+            <phase>package</phase>
+            <goals>
+              <goal>single</goal>
+            </goals>
+          </execution>
+        </executions>
+      </plugin>
+    </plugins>
+  </build>
 </project>
