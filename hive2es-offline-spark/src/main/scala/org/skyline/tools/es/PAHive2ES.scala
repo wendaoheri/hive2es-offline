@@ -136,7 +136,7 @@ object PAHive2ES {
       }
       (esKey, result.asJava)
     }
-    }
+    }.asJava
 
 
     val mappingObj = JSON.toJSON(mapping).asInstanceOf[JSONObject]
