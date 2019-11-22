@@ -132,7 +132,7 @@ class ESContainer(val config: Config, val partitionId: Int) {
     System.gc()
   }
 
-  def put(doc: JSONObject, id: String, routing: String = ""): Unit = {
+  def put(doc: JSONObject, id: String, routing: String = null): Unit = {
     bulkProcessor.add(new IndexRequest(config.indexName, config.typeName, id).routing(routing).create(true).source(doc))
   }
 
