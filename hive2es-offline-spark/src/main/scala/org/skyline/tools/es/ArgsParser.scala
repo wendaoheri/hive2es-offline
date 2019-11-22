@@ -1,5 +1,9 @@
 package org.skyline.tools.es
 
+import org.json4s.DefaultFormats
+import org.json4s.jackson.Serialization.writePretty
+import org.skyline.tools.es.PAHive2ES.{log, run}
+
 object ArgsParser {
 
   case class Config(
@@ -19,9 +23,9 @@ object ArgsParser {
                      localDataDir: String = "/tmp/hive2es",
                      bulkActions: Int = 100,
                      bulkSize: Int = 5,
-                     hiveInputFields: String = null,
-                     indexESFields: String = null,
-                     indexHiveFields: String = null
+                     hiveInputFields: Seq[String] = null,
+                     indexESFields: Seq[String] = null,
+                     indexHiveFields: Seq[String] = null
                    )
 
   val argsParser = new scopt.OptionParser[Config]("hive2es offline") {
@@ -90,6 +94,21 @@ object ArgsParser {
     opt[Int]("bulk-size")
       .action((x, c) => c.copy(bulkSize = x))
       .text("Size of bulk actions, unit M, default 5M")
+
+    opt[Seq[String]]("hive-input-fields")
+      .valueName("<field_name1>,<field_name2>")
+      .action((x, c) => c.copy(hiveInputFields = x))
+      .text("Hive input fields")
+
+    opt[Seq[String]]("index-es-fields")
+      .valueName("<field_name1>,<field_name2>")
+      .action((x, c) => c.copy(indexESFields = x))
+      .text("ES Field need index")
+
+    opt[Seq[String]]("index-hive-fields")
+      .valueName("<field_name1>,<field_name2>")
+      .action((x, c) => c.copy(indexHiveFields = x))
+      .text("Hive Field need index")
   }
 
 }

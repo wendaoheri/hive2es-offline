@@ -47,17 +47,12 @@ object PAHive2ES {
     val partitionKey = Option(config.routing).getOrElse(config.id)
 
     val hiveInputFields = config.hiveInputFields
-    val indexESFields = config.indexESFields.split(",").map(_.toLowerCase).toSet
-    val indexHiveFields = config.indexHiveFields.split(",").map(_.toLowerCase).toSet
-
-    val indexESFieldsB = sc.broadcast(indexESFields)
-    val indexHiveFieldsB = sc.broadcast(indexHiveFields)
 
     def needIndex(fieldName: String, esKey: String): Boolean = {
-      if (indexHiveFieldsB.value.contains(fieldName)) {
+      if (config.indexHiveFields.contains(fieldName)) {
         return true
       }
-      if (indexESFieldsB.value.contains(esKey)) {
+      if (config.indexESFields.contains(esKey)) {
         return true
       }
       if (fieldName.endsWith("_il") || fieldName.endsWith("_ex")) {
