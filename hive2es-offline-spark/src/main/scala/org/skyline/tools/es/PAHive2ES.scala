@@ -39,6 +39,9 @@ object PAHive2ES {
       .enableHiveSupport()
       .getOrCreate()
 
+    val dt = config.indexName.substring(config.indexName.lastIndexOf("_") + 1)
+    val alias = Option(config.alias).getOrElse(config.indexName.substring(0, config.indexName.lastIndexOf("_")))
+
     val sc = spark.sparkContext
     val whereClause = Some(config.where).getOrElse("1 = 1")
     val input = spark.read.table(config.hiveTable).where(whereClause)
@@ -70,6 +73,18 @@ object PAHive2ES {
       }
     }
 
+    val dataTypeMapping = spark.sql(
+      s"""
+         |select
+         |  index_name,data_type
+         |from
+         |  raw.I_DSPDATA_USERINDEX_INDEXFIELD
+         |where dt = $dt and lower(theme) = lower("$alias")
+       """.stripMargin).collect().map(r => {
+      (r.getAs[String]("index_name").trim, r.getAs[String]("data_type").trim)
+    }).toMap
+
+
     val data = input.rdd.map(r => {
       r.schema.fields.flatMap(f => {
         f.dataType match {
@@ -99,11 +114,12 @@ object PAHive2ES {
       })
     }).persist(StorageLevel.DISK_ONLY)
 
+
     val fields = data.flatMap(_.toSeq).filter(_._1 != null).reduceByKey((x, _) => x).collect
 
     import scala.collection.JavaConverters._
 
-    val mapping = fields.toMap.mapValues(x => {
+    val mapping = fields.toMap.map { case (esKey, x) => {
       val index = if (!x._2) {
         "no"
       } else if (x._1.equalsIgnoreCase("string")) {
@@ -111,15 +127,17 @@ object PAHive2ES {
       } else {
         null
       }
-      var result = Map("type" -> x._1)
+      var result = Map("type" -> dataTypeMapping.getOrElse(esKey, x._1))
       if (index != null) {
         result += ("index" -> index)
       }
       if (x._1.equalsIgnoreCase("date")) {
         result += ("format" -> "yyyyMMdd")
       }
-      result.asJava
-    }).asJava
+      (esKey, result.asJava)
+    }
+    }
+
 
     val mappingObj = JSON.toJSON(mapping).asInstanceOf[JSONObject]
 
