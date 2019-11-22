@@ -38,7 +38,9 @@ class ESContainer(val config: Config, val partitionId: Int) {
       if (!Files.exists(parentDir)) {
         Files.createDirectories(parentDir)
       }
-      Files.createFile(_tmp)
+      if(!Files.exists(_tmp)){
+        Files.createFile(_tmp)
+      }
     }
     _tmp
   }
