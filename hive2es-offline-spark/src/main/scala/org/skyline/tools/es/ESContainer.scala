@@ -17,7 +17,7 @@ import org.elasticsearch.action.index.IndexRequest
 import org.elasticsearch.common.settings.Settings
 import org.elasticsearch.common.unit.{ByteSizeUnit, ByteSizeValue, TimeValue}
 import org.elasticsearch.node.NodeBuilder
-import org.skyline.tools.es.Hive2ES.Config
+import org.skyline.tools.es.ArgsParser.Config
 
 /**
   * @author Sean Liu
