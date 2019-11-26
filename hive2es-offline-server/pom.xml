@@ -13,21 +13,57 @@
 
   <description>hive2es offline load plugin</description>
 
-  <properties>
-    <elasticsearch.version>${es.version}</elasticsearch.version>
-    <elasticsearch.plugin.classname>org.skyline.tools.es.plugin.Hive2ESOfflinePlugin
-    </elasticsearch.plugin.classname>
-    <elasticsearch.plugin.name>${project.artifactId}</elasticsearch.plugin.name>
-    <elasticsearch.plugin.jvm>true</elasticsearch.plugin.jvm>
-    <elasticsearch.plugin.isolated>true</elasticsearch.plugin.isolated>
-    <elasticsearch.plugin.site>false</elasticsearch.plugin.site>
-  </properties>
 
   <dependencies>
+
     <dependency>
-      <groupId>org.elasticsearch</groupId>
-      <artifactId>elasticsearch</artifactId>
+      <groupId>org.apache.curator</groupId>
+      <artifactId>curator-recipes</artifactId>
+      <exclusions>
+        <exclusion>
+          <groupId>org.apache.zookeeper</groupId>
+          <artifactId>zookeeper</artifactId>
+        </exclusion>
+      </exclusions>
+    </dependency>
+
+    <dependency>
+      <groupId>org.apache.zookeeper</groupId>
+      <artifactId>zookeeper</artifactId>
+    </dependency>
+
+    <dependency>
+      <artifactId>spring-boot-starter-test</artifactId>
+      <groupId>org.springframework.boot</groupId>
+      <scope>test</scope>
+    </dependency>
+
+    <dependency>
+      <groupId>org.projectlombok</groupId>
+      <artifactId>lombok</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-starter-logging</artifactId>
       <scope>provided</scope>
+      <exclusions>
+        <exclusion>
+          <artifactId>logback-classic</artifactId>
+          <groupId>ch.qos.logback</groupId>
+        </exclusion>
+      </exclusions>
+    </dependency>
+    <dependency>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-starter-web</artifactId>
+    </dependency>
+    <dependency>
+      <artifactId>httpasyncclient</artifactId>
+      <groupId>org.apache.httpcomponents</groupId>
+    </dependency>
+    <dependency>
+      <artifactId>spring-boot-starter-data-elasticsearch</artifactId>
+      <groupId>org.springframework.boot</groupId>
     </dependency>
   </dependencies>
   <build>
