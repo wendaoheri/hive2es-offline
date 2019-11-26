@@ -19,12 +19,14 @@ object ServerNotifier {
     val data = JSON.parse(
       s"""
          |{
-         |  "numberShards":36
+         |  "numberShards":36,
+         |  "hdfsWorkDir":"/tmp/es_offline",
+         |  "indexName" : "custom"
          |}
        """.stripMargin)
     curatorFramework.create()
       .creatingParentsIfNeeded()
-      .withMode(CreateMode.PERSISTENT_SEQUENTIAL)
+      .withMode(CreateMode.PERSISTENT)
       .forPath(path, data.toString.getBytes())
     true
   }

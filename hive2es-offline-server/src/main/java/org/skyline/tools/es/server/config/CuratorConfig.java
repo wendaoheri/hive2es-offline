@@ -1,4 +1,4 @@
-package org.skyline.tools.es.server;
+package org.skyline.tools.es.server.config;
 
 
 import lombok.Data;
@@ -10,6 +10,9 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.stereotype.Component;
 
+/**
+ * @author sean
+ */
 @Data
 @Component
 @ConfigurationProperties(prefix = "curator")

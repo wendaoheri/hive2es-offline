@@ -30,6 +30,12 @@
     <dependency>
       <groupId>org.apache.zookeeper</groupId>
       <artifactId>zookeeper</artifactId>
+      <exclusions>
+        <exclusion>
+          <artifactId>netty</artifactId>
+          <groupId>org.jboss.netty</groupId>
+        </exclusion>
+      </exclusions>
     </dependency>
 
     <dependency>
@@ -62,8 +68,16 @@
       <groupId>org.apache.httpcomponents</groupId>
     </dependency>
     <dependency>
-      <artifactId>spring-boot-starter-data-elasticsearch</artifactId>
-      <groupId>org.springframework.boot</groupId>
+      <groupId>org.elasticsearch</groupId>
+      <artifactId>elasticsearch</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>com.alibaba</groupId>
+      <artifactId>fastjson</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>org.apache.hadoop</groupId>
+      <artifactId>hadoop-client</artifactId>
     </dependency>
   </dependencies>
   <build>
