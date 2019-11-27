@@ -149,16 +149,30 @@ public class ESNodeCompanionService extends LeaderSelectorListenerAdapter {
   private Map<String, List<String>> getCurrentNodeShards(String path) {
     Map<String, List<String>> result = Maps.newHashMap();
     try {
-
+      String hostPath = path + "/" + Utils.getHostName();
+      while (true) {
+        if (isExisted(hostPath)) {
+          break;
+        }
+        Thread.sleep(100);
+      }
       JSONObject data = JSON
-          .parseObject(new String(client.getData().forPath(path + "/" + Utils.getHostName())));
-      data.keySet().forEach(x -> {
-        result.put(x, data.getJSONArray(x).toJavaList(String.class));
-      });
+          .parseObject(new String(client.getData().forPath(hostPath)));
+      data.keySet().forEach(x -> result.put(x, data.getJSONArray(x).toJavaList(String.class))
+      );
     } catch (Exception e) {
       log.info("Get current node shards failed", e);
     }
     return result;
+  }
+
+  private boolean isExisted(String path) {
+    try {
+      return null != client.checkExists().forPath(path);
+    } catch (Exception e) {
+      log.error("Check path [" + path + "] exists failed", e);
+    }
+    return false;
   }
 
   public String currentNodePath() throws UnknownHostException {

@@ -1,10 +1,14 @@
 package org.skyline.tools.es.server;
 
+import java.io.File;
 import java.io.IOException;
 import javax.annotation.PostConstruct;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.fs.FileStatus;
 import org.apache.hadoop.fs.FileSystem;
+import org.apache.hadoop.fs.FileUtil;
+import org.apache.hadoop.fs.Path;
 import org.springframework.stereotype.Component;
 
 /**
@@ -22,7 +26,7 @@ public class HdfsClient {
     try {
       fs = FileSystem.get(getConfiguration());
     } catch (IOException e) {
-      log.error("Create hadoop file system failed", e);
+      log.error("Create hadoop FileSystem failed", e);
     }
   }
 
@@ -31,6 +35,30 @@ public class HdfsClient {
     return conf;
   }
 
-  public void download(){
+  public void downloadFolder(String srcPath, String dstPath) throws IOException {
+    File dstDir = new File(dstPath);
+    if (!dstDir.exists()) {
+      dstDir.mkdirs();
+    }
+    FileStatus[] srcFileStatus = fs.listStatus(new Path(srcPath));
+    Path[] srcFilePath = FileUtil.stat2Paths(srcFileStatus);
+    for (int i = 0; i < srcFilePath.length; i++) {
+      String srcFile = srcFilePath[i].toString();
+      int fileNamePosi = srcFile.lastIndexOf('/');
+      String fileName = srcFile.substring(fileNamePosi + 1);
+      download(srcPath + '/' + fileName, dstPath + '/' + fileName);
+    }
+  }
+
+  public void download(String srcPath, String dstPath) throws IOException {
+    if (fs.isFile(new Path(srcPath))) {
+      downloadFile(srcPath, dstPath);
+    } else {
+      downloadFolder(srcPath, dstPath);
+    }
+  }
+
+  public void downloadFile(String srcPath, String dstPath) throws IOException {
+    fs.copyToLocalFile(false, new Path(srcPath), new Path(dstPath));
   }
 }

@@ -10,3 +10,5 @@ curator:
   connectionTimeoutMs: 5000  # 连接超时时间
 server:
   port: 0
+workDir:
+  /tmp/es_offline

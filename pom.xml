@@ -11,6 +11,7 @@
   <modules>
     <module>hive2es-offline-server</module>
     <module>hive2es-offline-spark</module>
+    <module>hive2es-offline-common</module>
   </modules>
   <properties>
     <scala.version>2.11.8</scala.version>
