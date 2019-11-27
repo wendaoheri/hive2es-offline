@@ -53,6 +53,7 @@ public class ESNodeCompanionService extends LeaderSelectorListenerAdapter {
 
       client.create().creatingParentsIfNeeded().withMode(CreateMode.EPHEMERAL)
           .forPath(nodePath);
+      updateESNodeInfo();
       log.info("Register node {} on path {}", Utils.getHostName(), nodePath);
 
       registerIndicesListener();

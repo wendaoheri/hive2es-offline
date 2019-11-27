@@ -17,6 +17,7 @@
 #JDK所在路径
 cd ${0%/*}/..
 
+
 JAVA_HOME=$JAVA_HOME
 
 #执行程序启动所使用的系统用户，考虑到安全，推荐不使用root帐号
@@ -80,7 +81,7 @@ start() {
       echo "================================"
    else
       echo -n "Starting $APP_MAINCLASS ..."
-      JAVA_CMD="nohup $JAVA_HOME/bin/java $JAVA_OPTS -classpath $CLASSPATH $APP_MAINCLASS > skyline.out 2>&1 &"
+      JAVA_CMD="nohup $JAVA_HOME/bin/java $JAVA_OPTS -classpath $CLASSPATH $APP_MAINCLASS > hive2es-server.out 2>&1 &"
       sh -c "$JAVA_CMD"
       checkpid
       if [ $psid -ne 0 ]; then

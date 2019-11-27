@@ -2,13 +2,17 @@ package org.skyline.tools.es.server;
 
 import com.google.common.collect.Maps;
 import java.net.UnknownHostException;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.compress.utils.Lists;
 import org.elasticsearch.action.admin.cluster.node.info.NodeInfo;
 import org.elasticsearch.action.admin.cluster.node.info.NodesInfoResponse;
+import org.elasticsearch.action.admin.cluster.node.stats.NodesStatsResponse;
 import org.elasticsearch.client.transport.TransportClient;
+import org.elasticsearch.monitor.fs.FsInfo.Path;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
@@ -51,8 +55,17 @@ public class ESClient {
   }
 
   public String[] getDataPathByNodeId(String nodeId) {
-    Map<String, NodeInfo> nodInfos = getDataNodeInfoOnHost();
-    return nodInfos.get(nodeId).getSettings().getAsArray("data.path");
+    NodesStatsResponse resp = client.admin().cluster().prepareNodesStats(nodeId).setFs(true)
+        .get();
+    List<String> result = Lists.newArrayList();
+    if (resp.getNodes().length > 0) {
+      Iterator<Path> it = resp.getNodes()[0].getFs().iterator();
+      while (it.hasNext()) {
+        result.add(it.next().getPath());
+      }
+
+    }
+    return result.toArray(new String[result.size()]);
   }
 
 }

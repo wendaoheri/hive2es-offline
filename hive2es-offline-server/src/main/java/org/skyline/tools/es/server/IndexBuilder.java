@@ -51,63 +51,61 @@ public class IndexBuilder {
         try {
           hdfsClient.downloadFolder(srcPath, destPath);
           log.info("Download index bundle from hdfs[{}] to local[{}]", srcPath, destPath);
+          unzipBundles(destPath);
+          log.info("Unzip index bundle path {}", destPath);
+          String finalIndexPath = mergeIndex(destPath);
+          log.info("Merge index bundle in dir[{}] ", destPath);
+
+          String dataPath = Utils.mostFreeDir(dataPaths);
+          log.info("Most free data dir is {}", dataPath);
+
+          // 从临时目录把索引移到es的data下面
+          Path from = Paths.get(finalIndexPath);
+          Path to = Paths.get(dataPath, "indices", indexName);
+          Files.move(from, to);
+          log.info("Move index from {} to {}", from, to);
         } catch (IOException e) {
           log.error(
-              "Download index bundle from hdfs[" + srcPath + "] to local[" + destPath + "] failed",
-              e);
+              "Build index bundle from hdfs[" + srcPath + "] failed", e);
         }
-        String dataPath = Utils.mostFreeDir(dataPaths);
-        log.info("Most free data dir is {}", dataPath);
-        try {
-          buildIndex(destPath, dataPath);
-          log.info("Build index from bundle dir[{}] to dataPath[{}]", destPath, dataPath);
-        } catch (IOException e) {
-          log.info(
-              "Build index from bundle dir[{" + destPath + "}] to dataPath[{" + dataPath
-                  + "}] failed", e);
-        }
+
       }
     }
 
   }
 
-  private void buildIndex(String destPath, String nodeDataPath) throws IOException {
-    Path indexBundlePath = Paths.get(destPath);
-    unzipBundles(indexBundlePath);
+  private String mergeIndex(String indexBundlePath) throws IOException {
+    Path path = Paths.get(indexBundlePath);
 
-    Map<Path, List<Path>> indexGroup = Files.walk(indexBundlePath, 2)
-        .filter(p -> !p.getFileName().toString().startsWith("_") && Files.isDirectory(p)
-            && p.relativize(indexBundlePath).getNameCount() > 1)
-        .collect(Collectors.groupingBy(p -> p.getFileName()));
-
-    indexGroup.entrySet().parallelStream().forEach(entry -> {
-      log.info("start merge index for shard " + entry.getKey());
-      List<Path> indexList = entry.getValue();
-      Collections.sort(indexList);
-      try (
-          FSDirectory directory = FSDirectory.open(indexList.get(0).resolve("index"));
-          IndexWriter writer = new IndexWriter(directory,
-              new IndexWriterConfig(null)
-                  .setOpenMode(IndexWriterConfig.OpenMode.APPEND))) {
-        Directory[] indexes = new Directory[indexList.size() - 1];
-        for (int i = 1; i < indexList.size(); i++) {
-          indexes[i - 1] = FSDirectory.open(indexList.get(i).resolve("index"));
-        }
-        writer.addIndexes(indexes);
-        writer.flush();
-        writer.forceMerge(1);
-        log.info("merge index for shard " + entry.getKey() + " done");
-      } catch (IOException e) {
-        e.printStackTrace();
+    log.info("start merge index for shard " + path.getFileName());
+    List<Path> indexList = Files.list(path).filter(p -> Files.isDirectory(p))
+        .collect(Collectors.toList());
+    Collections.sort(indexList);
+    try (
+        FSDirectory directory = FSDirectory.open(indexList.get(0).resolve("index"));
+        IndexWriter writer = new IndexWriter(directory,
+            new IndexWriterConfig(null)
+                .setOpenMode(IndexWriterConfig.OpenMode.APPEND))) {
+      Directory[] indexes = new Directory[indexList.size() - 1];
+      for (int i = 1; i < indexList.size(); i++) {
+        indexes[i - 1] = FSDirectory.open(indexList.get(i).resolve("index"));
       }
-    });
+      writer.addIndexes(indexes);
+      writer.flush();
+      writer.forceMerge(1);
+      log.info("merge index for shard " + path.getFileName() + " done");
+    } catch (IOException e) {
+      log.error("Merge index for shard " + path.getFileName() + " error", e);
+    }
+    return indexList.get(0).toString();
   }
 
-  public void unzipBundles(Path indexBundlePath) throws IOException {
-    Files.list(indexBundlePath).parallel().forEach(path -> {
+  public void unzipBundles(String indexBundlePath) throws IOException {
+    Path zipPath = Paths.get(indexBundlePath);
+    Files.list(zipPath).parallel().forEach(path -> {
       try {
         log.info("unzip index bundle : " + path.toString());
-        Utils.unzip(path, indexBundlePath);
+        Utils.unzip(path, zipPath);
         FileUtils.forceDelete(path.toFile());
         log.info("delete index bundle file : " + path.toString());
       } catch (IOException e) {
@@ -115,6 +113,5 @@ public class IndexBuilder {
       }
     });
   }
-
 
 }

@@ -4,7 +4,7 @@
   <id>package</id>
   <formats>
     <format>dir</format>
-    <!--<format>zip</format>-->
+    <format>zip</format>
   </formats>
   <includeBaseDirectory>true</includeBaseDirectory>
   <fileSets>
@@ -20,6 +20,10 @@
       <directory>${project.basedir}/bin</directory>
       <outputDirectory>bin</outputDirectory>
       <fileMode>0755</fileMode>
+    </fileSet>
+    <fileSet>
+      <directory>src/main/resources</directory>
+      <outputDirectory>conf</outputDirectory>
     </fileSet>
   </fileSets>
   <dependencySets>
