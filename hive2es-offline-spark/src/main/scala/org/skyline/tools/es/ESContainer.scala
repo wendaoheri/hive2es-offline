@@ -241,7 +241,10 @@ class ESContainer(val config: Config, val partitionId: Int) {
     val shardFiles = Files.list(zipSource).collect(Collectors.toList())
 
     log.info(s"shard files : ${shardFiles.mkString(",")}")
-    for (p <- shardFiles) {
+    for (
+      p <- shardFiles
+      if Files.list(p).iterator().filter(x => x.endsWith(".ftd")).size > 0
+    ) {
       val folderName = p.getFileName.toString
       val zipFileName = s"p${partitionId}_$folderName.zip"
       log.info(s"zip index partition folder from $p to ${zipSource.resolve(zipFileName)}")
