@@ -93,7 +93,7 @@ object Hive2ES {
       }
     })
 
-    ServerNotifier.notify(config)
+//    ServerNotifier.notify(config)
 
   }
 

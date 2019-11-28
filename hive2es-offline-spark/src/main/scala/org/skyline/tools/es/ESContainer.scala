@@ -38,7 +38,7 @@ class ESContainer(val config: Config, val partitionId: Int) {
       if (!Files.exists(parentDir)) {
         Files.createDirectories(parentDir)
       }
-      if(!Files.exists(_tmp)){
+      if (!Files.exists(_tmp)) {
         Files.createFile(_tmp)
       }
     }
@@ -243,7 +243,8 @@ class ESContainer(val config: Config, val partitionId: Int) {
     log.info(s"shard files : ${shardFiles.mkString(",")}")
     for (
       p <- shardFiles
-      if Files.list(p).iterator().filter(x => x.endsWith(".ftd")).size > 0
+      if p.endsWith("_state") ||
+        Files.list(p.resolve("index")).iterator().filter(x => x.toString.endsWith(".fdt") || x.toString.endsWith(".cfs")).size > 0
     ) {
       val folderName = p.getFileName.toString
       val zipFileName = s"p${partitionId}_$folderName.zip"

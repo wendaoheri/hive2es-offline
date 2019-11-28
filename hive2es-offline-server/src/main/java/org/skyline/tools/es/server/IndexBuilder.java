@@ -62,7 +62,7 @@ public class IndexBuilder {
           // 从临时目录把索引移到es的data下面
           Path from = Paths.get(finalIndexPath);
           Path to = Paths.get(dataPath, "indices", indexName);
-          Files.move(from, to);
+//          Files.move(from, to);
           log.info("Move index from {} to {}", from, to);
         } catch (IOException e) {
           log.error(
