@@ -102,7 +102,7 @@ public class IndexBuilder {
 
   public void unzipBundles(String indexBundlePath) throws IOException {
     Path zipPath = Paths.get(indexBundlePath);
-    Files.list(zipPath).parallel().forEach(path -> {
+    Files.list(zipPath).filter(x -> !x.toString().endsWith("crc")).parallel().forEach(path -> {
       try {
         log.info("unzip index bundle : " + path.toString());
         Utils.unzip(path, zipPath);
