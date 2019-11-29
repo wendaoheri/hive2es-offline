@@ -2,19 +2,27 @@ package org.skyline.tools.es.server;
 
 import com.alibaba.fastjson.JSONObject;
 import java.io.IOException;
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.io.FileUtils;
-import org.apache.lucene.index.IndexWriter;
-import org.apache.lucene.index.IndexWriterConfig;
+import org.apache.lucene.index.SegmentCommitInfo;
+import org.apache.lucene.index.SegmentInfo;
+import org.apache.lucene.index.SegmentInfos;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.FSDirectory;
+import org.apache.lucene.store.FlushInfo;
+import org.apache.lucene.store.IOContext;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
@@ -82,22 +90,105 @@ public class IndexBuilder {
         .collect(Collectors.toList());
     Collections.sort(indexList);
     try (
-        FSDirectory directory = FSDirectory.open(indexList.get(0).resolve("index"));
-        IndexWriter writer = new IndexWriter(directory,
-            new IndexWriterConfig(null)
-                .setOpenMode(IndexWriterConfig.OpenMode.APPEND))) {
-      Directory[] indexes = new Directory[indexList.size() - 1];
+        FSDirectory directory = FSDirectory.open(indexList.get(0).resolve("index"))
+    ) {
+      SegmentInfos segmentInfos = SegmentInfos.readLatestCommit(directory);
+      String originSegmentFileName = segmentInfos.getSegmentsFileName();
+      Path originSegmentPath = directory.getDirectory().resolve(originSegmentFileName);
+      log.info("Original segment info file path is {}", originSegmentPath.toString());
+      List<SegmentCommitInfo> infos = new ArrayList<>();
+
       for (int i = 1; i < indexList.size(); i++) {
-        indexes[i - 1] = FSDirectory.open(indexList.get(i).resolve("index"));
+        FSDirectory dir = FSDirectory.open(indexList.get(i).resolve("index"));
+        SegmentInfos sis = SegmentInfos.readLatestCommit(dir);
+        for (SegmentCommitInfo info : sis) {
+          String newSegName = newSegmentName(segmentInfos);
+          log.info("New segment name is {}", newSegName);
+          infos.add(copySegmentAsIs(directory, info, newSegName));
+        }
       }
-      writer.addIndexes(indexes);
-      writer.flush();
-      writer.forceMerge(1);
+      segmentInfos.addAll(infos);
+      SegmentInfos pendingCommit = segmentInfos.clone();
+      Method prepareCommit = pendingCommit.getClass()
+          .getDeclaredMethod("prepareCommit", Directory.class);
+      prepareCommit.setAccessible(true);
+      prepareCommit.invoke(pendingCommit, directory);
+
+      log.info("Add pending segment info file");
+
+      Method updateGeneration = segmentInfos.getClass()
+          .getDeclaredMethod("updateGeneration", SegmentInfos.class);
+      updateGeneration.setAccessible(true);
+      updateGeneration.invoke(segmentInfos, pendingCommit);
+
+      log.info("Update segment info generation");
+
+      Method finishCommit = pendingCommit.getClass()
+          .getDeclaredMethod("finishCommit", Directory.class);
+      finishCommit.setAccessible(true);
+      finishCommit.invoke(pendingCommit, directory);
+
+      log.info("Finish segment info commit");
+
+      Files.delete(originSegmentPath);
+      log.info("Delete origin segment info file {}", originSegmentPath.toString());
+
       log.info("merge index for shard " + path.getFileName() + " done");
-    } catch (IOException e) {
+    } catch (IOException | NoSuchMethodException | IllegalAccessException | InvocationTargetException e) {
       log.error("Merge index for shard " + path.getFileName() + " error", e);
     }
     return indexList.get(0).toString();
+  }
+
+  private SegmentCommitInfo copySegmentAsIs(Directory directory, SegmentCommitInfo info,
+      String segName) throws IOException {
+
+    SegmentInfo newInfo = new SegmentInfo(directory, info.info.getVersion(), segName,
+        info.info.maxDoc(),
+        info.info.getUseCompoundFile(), info.info.getCodec(),
+        info.info.getDiagnostics(), info.info.getId(), info.info.getAttributes());
+    SegmentCommitInfo newInfoPerCommit = new SegmentCommitInfo(newInfo, info.getDelCount(),
+        info.getDelGen(),
+        info.getFieldInfosGen(), info.getDocValuesGen());
+
+    newInfo.setFiles(info.files());
+
+    boolean success = false;
+
+    Set<String> copiedFiles = new HashSet<>();
+    try {
+      // Copy the segment's files
+      for (String file : info.files()) {
+        Method namedForThisSegment = newInfo.getClass()
+            .getDeclaredMethod("namedForThisSegment", String.class);
+        namedForThisSegment.setAccessible(true);
+        final String newFileName = (String) namedForThisSegment.invoke(newInfo, file);
+
+        FSDirectory srcDir = (FSDirectory) info.info.dir;
+        FSDirectory destDir = (FSDirectory) directory;
+        Path srcFile = srcDir.getDirectory().resolve(file);
+        Path destFile = destDir.getDirectory().resolve(newFileName);
+        Files.move(srcFile, destFile);
+        log.info("Move index file from {} to {}", srcFile.toString(), destFile.toString());
+        copiedFiles.add(newFileName);
+      }
+      success = true;
+    } catch (NoSuchMethodException | IllegalAccessException | InvocationTargetException e) {
+      log.error("Get new segment name error", e);
+    } finally {
+      if (!success) {
+//        deleteNewFiles(copiedFiles);
+      }
+    }
+
+    assert copiedFiles.equals(newInfoPerCommit.files());
+
+    return newInfoPerCommit;
+  }
+
+  public String newSegmentName(SegmentInfos segmentInfos) {
+    segmentInfos.changed();
+    return "_" + Integer.toString(segmentInfos.counter++, Character.MAX_RADIX);
   }
 
   public void unzipBundles(String indexBundlePath) throws IOException {
