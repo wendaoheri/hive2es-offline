@@ -10,6 +10,9 @@ import java.nio.file.FileStore;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.nio.file.attribute.PosixFilePermission;
+import java.nio.file.attribute.PosixFilePermissions;
+import java.util.Set;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.compress.archivers.ArchiveEntry;
 import org.apache.commons.compress.archivers.zip.ZipArchiveInputStream;
@@ -118,4 +121,22 @@ public class Utils {
     }
   }
 
+  public static void setPermissionRecursive(Path path) throws IOException {
+    Set<PosixFilePermission> perms = PosixFilePermissions.fromString("rwxrwxrwx");
+    Files.walk(path)
+        .forEach(p -> {
+          try {
+            Files.setPosixFilePermissions(p, perms);
+          } catch (IOException e) {
+            log.error("Set permission error", e);
+          }
+        });
+    log.info("Set permission  recursive to path {}", path);
+  }
+
+  public static void setPermissions(Path path) throws IOException {
+    Set<PosixFilePermission> perms = PosixFilePermissions.fromString("rwxrwxrwx");
+    Files.setPosixFilePermissions(path, perms);
+
+  }
 }

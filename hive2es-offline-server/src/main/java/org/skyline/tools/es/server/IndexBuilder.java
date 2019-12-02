@@ -4,9 +4,11 @@ import com.alibaba.fastjson.JSONObject;
 import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
+import java.nio.file.CopyOption;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.nio.file.attribute.PosixFilePermissions;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashSet;
@@ -49,11 +51,12 @@ public class IndexBuilder {
     String indexName = configData.getString("indexName");
 
     Path localStateDir = Paths.get(Utils.mostFreeDir(workDirs), indexName);
+    log.info("Local state dir is {}", localStateDir.toString());
     try {
 
       String hdfsStateDir = Paths.get(hdfsWorkDir, indexName, STATE_DIR).toString();
       String hdfsStateFile = hdfsClient.largestFileInDirectory(hdfsStateDir);
-
+      log.info("Download state file from {}", hdfsStateFile);
       hdfsClient.downloadFile(hdfsStateFile, localStateDir.resolve(STATE_DIR + ".zip").toString());
       Utils.unzip(localStateDir.resolve(STATE_DIR + ".zip"), localStateDir);
       Files.deleteIfExists(localStateDir.resolve(STATE_DIR + ".zip"));
@@ -88,17 +91,29 @@ public class IndexBuilder {
 
           // 从临时目录把索引移到es的data下面
           Path from = Paths.get(finalIndexPath);
-          Path to = Paths.get(dataPath, "indices", indexName);
+          Path to = Paths.get(dataPath, "indices", indexName, shardId);
+
+          if (!Files.exists(to.getParent())) {
+            log.info("Create index folder : {}", to.getParent());
+            Files.createDirectories(to.getParent());
+          }
 
           Files.move(from, to);
           log.info("Move index from {} to {}", from, to);
 
-          if (Files.list(to).filter(p -> p.toString().endsWith(STATE_DIR)).count() < 0) {
-            Files.copy(localStateDir.resolve(STATE_DIR), to);
-            log.info("Copy state file from {} to {}", localStateDir.resolve(STATE_DIR), to);
+          if (Files.list(to.getParent()).filter(p -> p.toString().endsWith(STATE_DIR)).count()
+              == 0L) {
+            FileUtils.copyDirectory(localStateDir.resolve(STATE_DIR).toFile(),
+                to.getParent().resolve(STATE_DIR).toFile());
+            Utils.setPermissionRecursive(to.getParent().resolve(STATE_DIR));
+            Utils.setPermissions(to.getParent());
+            log.info("Copy state file from {} to {}", localStateDir.resolve(STATE_DIR),
+                to.getParent().resolve(STATE_DIR));
           } else {
             log.info("State file exists");
           }
+
+          Utils.setPermissionRecursive(to);
         } catch (IOException e) {
           log.error(
               "Build index bundle from hdfs[" + srcPath + "] failed", e);
@@ -107,13 +122,13 @@ public class IndexBuilder {
       }
     }
     try {
-      Files.deleteIfExists(localStateDir);
-    } catch (IOException e) {
+      FileUtils.deleteDirectory(localStateDir.resolve(STATE_DIR).toFile());
+      log.info("Delete state file {}", localStateDir.resolve(STATE_DIR));
+    } catch (Exception e) {
       log.error("delete state file error", e);
     }
     return true;
   }
-
 
   private String mergeIndex(String indexBundlePath) throws IOException {
     Path path = Paths.get(indexBundlePath);
@@ -202,7 +217,7 @@ public class IndexBuilder {
         Path srcFile = srcDir.getDirectory().resolve(file);
         Path destFile = destDir.getDirectory().resolve(newFileName);
         Files.move(srcFile, destFile);
-        log.info("Move index file from {} to {}", srcFile.toString(), destFile.toString());
+        log.debug("Move index file from {} to {}", srcFile.toString(), destFile.toString());
         copiedFiles.add(newFileName);
       }
       success = true;
@@ -226,14 +241,17 @@ public class IndexBuilder {
 
   public void unzipBundles(String indexBundlePath) throws IOException {
     Path zipPath = Paths.get(indexBundlePath);
-    Files.list(zipPath).filter(x -> !x.toString().endsWith("crc")).parallel().forEach(path -> {
+    List<Path> zipFiles = Files.list(zipPath)
+        .filter(x -> !x.toString().endsWith("crc") && !x.toFile().isDirectory())
+        .collect(Collectors.toList());
+    zipFiles.parallelStream().forEach(path -> {
       try {
         log.info("unzip index bundle : " + path.toString());
         Utils.unzip(path, zipPath);
         FileUtils.forceDelete(path.toFile());
         log.info("delete index bundle file : " + path.toString());
       } catch (IOException e) {
-        log.error("unzip index bundle failed : " + path.toString());
+        log.error("unzip index bundle failed", e);
       }
     });
   }
