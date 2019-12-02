@@ -21,8 +21,6 @@ import org.apache.lucene.index.SegmentInfo;
 import org.apache.lucene.index.SegmentInfos;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.FSDirectory;
-import org.apache.lucene.store.FlushInfo;
-import org.apache.lucene.store.IOContext;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
@@ -35,8 +33,8 @@ import org.springframework.stereotype.Service;
 @Service
 public class IndexBuilder {
 
-  @Value("${workDir}")
-  private String workDir;
+  @Value("#{'${workDir}'.split(',')}")
+  private String[] workDirs;
 
   @Autowired
   private HdfsClient hdfsClient;
@@ -44,18 +42,42 @@ public class IndexBuilder {
   @Autowired
   private ESClient esClient;
 
-  public void build(Map<String, List<String>> idToShards, JSONObject configData) {
+  private static final String STATE_DIR = "_state";
+
+  public boolean build(Map<String, List<String>> idToShards, JSONObject configData) {
     String hdfsWorkDir = configData.getString("hdfsWorkDir");
     String indexName = configData.getString("indexName");
 
+    Path localStateDir = Paths.get(Utils.mostFreeDir(workDirs), indexName);
+    try {
+
+      String hdfsStateDir = Paths.get(hdfsWorkDir, indexName, STATE_DIR).toString();
+      String hdfsStateFile = hdfsClient.largestFileInDirectory(hdfsStateDir);
+
+      hdfsClient.downloadFile(hdfsStateFile, localStateDir.resolve(STATE_DIR + ".zip").toString());
+      Utils.unzip(localStateDir.resolve(STATE_DIR + ".zip"), localStateDir);
+      Files.deleteIfExists(localStateDir.resolve(STATE_DIR + ".zip"));
+
+    } catch (IOException e) {
+      log.error("Download state file from hdfs failed", e);
+      return false;
+    }
+
     // TODO 这里先单线程操作,下载一个shard，merge一个shard
-    for (String id : idToShards.keySet()) {
-      List<String> shards = idToShards.get(id);
-      String[] dataPaths = esClient.getDataPathByNodeId(id);
+    for (String nodeId : idToShards.keySet()) {
+      List<String> shards = idToShards.get(nodeId);
+      String[] dataPaths = esClient.getDataPathByNodeId(nodeId);
       for (String shardId : shards) {
+        // 选择最空闲的一个路径放索引
+        String dataPath = Utils.mostFreeDir(dataPaths);
+        log.info("Most free data dir is {}", dataPath);
+
         String srcPath = Paths.get(hdfsWorkDir, indexName, shardId).toString();
+        String workDir = Utils.sameDiskDir(workDirs, dataPath);
+        log.info("Chosen work dir is {}", workDir);
         String destPath = Paths.get(workDir, indexName, shardId).toString();
-        log.info("Build index shard [{}] for node [{}]", shardId, id);
+
+        log.info("Build index shard [{}] for node [{}]", shardId, nodeId);
         try {
           hdfsClient.downloadFolder(srcPath, destPath);
           log.info("Download index bundle from hdfs[{}] to local[{}]", srcPath, destPath);
@@ -64,23 +86,34 @@ public class IndexBuilder {
           String finalIndexPath = mergeIndex(destPath);
           log.info("Merge index bundle in dir[{}] ", destPath);
 
-          String dataPath = Utils.mostFreeDir(dataPaths);
-          log.info("Most free data dir is {}", dataPath);
-
           // 从临时目录把索引移到es的data下面
           Path from = Paths.get(finalIndexPath);
           Path to = Paths.get(dataPath, "indices", indexName);
-//          Files.move(from, to);
+
+          Files.move(from, to);
           log.info("Move index from {} to {}", from, to);
+
+          if (Files.list(to).filter(p -> p.toString().endsWith(STATE_DIR)).count() < 0) {
+            Files.copy(localStateDir.resolve(STATE_DIR), to);
+            log.info("Copy state file from {} to {}", localStateDir.resolve(STATE_DIR), to);
+          } else {
+            log.info("State file exists");
+          }
         } catch (IOException e) {
           log.error(
               "Build index bundle from hdfs[" + srcPath + "] failed", e);
+          return false;
         }
-
       }
     }
-
+    try {
+      Files.deleteIfExists(localStateDir);
+    } catch (IOException e) {
+      log.error("delete state file error", e);
+    }
+    return true;
   }
+
 
   private String mergeIndex(String indexBundlePath) throws IOException {
     Path path = Paths.get(indexBundlePath);

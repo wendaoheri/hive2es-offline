@@ -249,7 +249,7 @@ class ESContainer(val config: Config, val partitionId: Int) {
       val folderName = p.getFileName.toString
       val zipFileName = s"p${partitionId}_$folderName.zip"
       log.info(s"zip index partition folder from $p to ${zipSource.resolve(zipFileName)}")
-      CompressionUtils.zip(p, zipSource.resolve(zipFileName), s"p_$partitionId")
+      CompressionUtils.zip(p, zipSource.resolve(zipFileName), if (p.endsWith("_state")) "_state" else s"p_$partitionId")
       uploadToHdfs(zipSource.resolve(zipFileName), Paths.get(config.hdfsWorkDir, config.indexName, folderName, zipFileName))
     }
     log.info("compress index file and upload to hdfs end")

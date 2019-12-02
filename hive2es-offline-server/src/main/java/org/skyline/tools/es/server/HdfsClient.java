@@ -8,7 +8,9 @@ import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileStatus;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.FileUtil;
+import org.apache.hadoop.fs.LocatedFileStatus;
 import org.apache.hadoop.fs.Path;
+import org.apache.hadoop.fs.RemoteIterator;
 import org.springframework.stereotype.Component;
 
 /**
@@ -60,5 +62,21 @@ public class HdfsClient {
 
   public void downloadFile(String srcPath, String dstPath) throws IOException {
     fs.copyToLocalFile(false, new Path(srcPath), new Path(dstPath));
+  }
+
+  public String largestFileInDirectory(String dir) throws IOException {
+
+    RemoteIterator<LocatedFileStatus> files = fs
+        .listFiles(new Path(dir), false);
+    long max = 0;
+    String path = "";
+    while (files.hasNext()) {
+      LocatedFileStatus file = files.next();
+      if (file.getBlockSize() > max) {
+        max = file.getBlockSize();
+        path = file.getPath().toString();
+      }
+    }
+    return path;
   }
 }

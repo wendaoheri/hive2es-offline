@@ -51,8 +51,11 @@ public class ESNodeCompanionService extends LeaderSelectorListenerAdapter {
 
       String nodePath = currentNodePath();
 
-      client.create().creatingParentsIfNeeded().withMode(CreateMode.EPHEMERAL)
-          .forPath(nodePath);
+      if (!isExisted(nodePath)) {
+        client.create().creatingParentsIfNeeded().withMode(CreateMode.EPHEMERAL)
+            .forPath(nodePath);
+        log.info("Node path not exists and create it {}", nodePath);
+      }
       updateESNodeInfo();
       log.info("Register node {} on path {}", Utils.getHostName(), nodePath);
 

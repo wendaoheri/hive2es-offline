@@ -1,16 +1,16 @@
 package org.skyline.tools.es.server;
 
-import com.google.common.collect.Lists;
 import java.io.BufferedInputStream;
 import java.io.File;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
+import java.nio.file.FileStore;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.stream.Collectors;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.compress.archivers.ArchiveEntry;
 import org.apache.commons.compress.archivers.zip.ZipArchiveInputStream;
 import org.apache.commons.io.IOUtils;
@@ -18,6 +18,7 @@ import org.apache.commons.io.IOUtils;
 /**
  * @author sean
  */
+@Slf4j
 public class Utils {
 
   public static String getHostName() throws UnknownHostException {
@@ -74,6 +75,47 @@ public class Utils {
       }
     }
     return result;
+  }
+
+  /**
+   * 从dirs中选择一个和referenceDir在同一块磁盘的目录 如果没有在同一块磁盘上的则选择剩余空间最大的
+   */
+  public static String sameDiskDir(String[] dirs, String referenceDir) {
+    try {
+      String refFileStore = getFileStore(referenceDir);
+      for (String dir : dirs) {
+        String fileStore = getFileStore(dir);
+        if (fileStore.equalsIgnoreCase(refFileStore)) {
+          return dir;
+        }
+      }
+    } catch (IOException e) {
+      log.error("Get file store error", e);
+    }
+    log.warn("No same disk, use most free disk");
+    return mostFreeDir(dirs);
+  }
+
+  /**
+   * 获取path所在的mountPoint
+   */
+  public static String mountPoint(String path) throws IOException {
+    FileStore store = Files.getFileStore(Paths.get(path));
+    return getMountPointLinux(store);
+  }
+
+  public static String getFileStore(String path) throws IOException {
+    return Files.getFileStore(Paths.get(path)).name();
+  }
+
+  private static String getMountPointLinux(FileStore store) {
+    String desc = store.toString();
+    int index = desc.lastIndexOf(" (");
+    if (index != -1) {
+      return desc.substring(0, index);
+    } else {
+      return desc;
+    }
   }
 
 }
