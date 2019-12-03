@@ -4,6 +4,7 @@ import com.alibaba.fastjson.JSONObject;
 import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
+import java.net.UnknownHostException;
 import java.nio.file.CopyOption;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -46,6 +47,8 @@ public class IndexBuilder {
 
   private static final String STATE_DIR = "_state";
 
+  private static final String SHARD_STATE = "_shard_state";
+
   public boolean build(Map<String, List<String>> idToShards, JSONObject configData) {
     String hdfsWorkDir = configData.getString("hdfsWorkDir");
     String indexName = configData.getString("indexName");
@@ -54,12 +57,22 @@ public class IndexBuilder {
     log.info("Local state dir is {}", localStateDir.toString());
     try {
 
+      // download & unzip index state
       String hdfsStateDir = Paths.get(hdfsWorkDir, indexName, STATE_DIR).toString();
       String hdfsStateFile = hdfsClient.largestFileInDirectory(hdfsStateDir);
-      log.info("Download state file from {}", hdfsStateFile);
+      log.info("Download index state file from {}", hdfsStateFile);
       hdfsClient.downloadFile(hdfsStateFile, localStateDir.resolve(STATE_DIR + ".zip").toString());
       Utils.unzip(localStateDir.resolve(STATE_DIR + ".zip"), localStateDir);
       Files.deleteIfExists(localStateDir.resolve(STATE_DIR + ".zip"));
+
+      // download & unzip shard state
+      String hdfsShardStateFile = Paths.get(hdfsWorkDir, indexName, SHARD_STATE + ".zip")
+          .toString();
+      log.info("Download shard state file from {}", hdfsShardStateFile);
+      hdfsClient
+          .downloadFile(hdfsShardStateFile, localStateDir.resolve(SHARD_STATE + ".zip").toString());
+      Utils.unzip(localStateDir.resolve(SHARD_STATE + ".zip"), localStateDir);
+      Files.deleteIfExists(localStateDir.resolve(SHARD_STATE + ".zip"));
 
     } catch (IOException e) {
       log.error("Download state file from hdfs failed", e);
@@ -98,8 +111,14 @@ public class IndexBuilder {
             Files.createDirectories(to.getParent());
           }
 
-          Files.move(from, to);
           log.info("Move index from {} to {}", from, to);
+          Files.move(from, to);
+          log.info("Delete old shard _state file {}", to.resolve(STATE_DIR));
+          FileUtils.deleteDirectory(to.resolve(STATE_DIR).toFile());
+          log.info("Copy new shard _state file from {} to {}", localStateDir.resolve(SHARD_STATE),
+              to.resolve(STATE_DIR));
+          FileUtils.copyDirectory(localStateDir.resolve(SHARD_STATE).toFile(),
+              to.resolve(STATE_DIR).toFile());
 
           if (Files.list(to.getParent()).filter(p -> p.toString().endsWith(STATE_DIR)).count()
               == 0L) {
@@ -127,9 +146,18 @@ public class IndexBuilder {
     } catch (Exception e) {
       log.error("delete state file error", e);
     }
+    log.info("Trigger dangling index build {} start", indexName);
+    esClient.triggerDanglingIndexProcess();
+    log.info("Trigger dangling index build {} end", indexName);
     return true;
   }
 
+  /**
+   * 使用Lucene合并索引会非常慢，所以这里直接进行文件移动，然后重新生成segment信息
+   * @param indexBundlePath
+   * @return
+   * @throws IOException
+   */
   private String mergeIndex(String indexBundlePath) throws IOException {
     Path path = Paths.get(indexBundlePath);
 

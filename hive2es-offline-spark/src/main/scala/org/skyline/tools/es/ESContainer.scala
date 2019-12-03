@@ -240,6 +240,16 @@ class ESContainer(val config: Config, val partitionId: Int) {
     log.info(s"zip source ${zipSource} exists : $zipSourceExists")
     val shardFiles = Files.list(zipSource).collect(Collectors.toList())
 
+    // 第0个partition上传自己的shard _state文件给所有其他shard使用
+    if (partitionId == 0) {
+
+      val shardStateName = "_shard_state.zip"
+      val shardStateDir = zipSource.resolve("0").resolve("_state")
+      log.info(s"zip shard state from $shardStateDir to ${zipSource.resolve(shardStateName)}")
+      CompressionUtils.zip(shardStateDir, zipSource.resolve(shardStateName), "_shard_state")
+      uploadToHdfs(zipSource.resolve(shardStateName),Paths.get(config.hdfsWorkDir, config.indexName, shardStateName))
+    }
+
     log.info(s"shard files : ${shardFiles.mkString(",")}")
     for (
       p <- shardFiles

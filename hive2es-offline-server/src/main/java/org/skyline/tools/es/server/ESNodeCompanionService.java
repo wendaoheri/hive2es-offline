@@ -101,6 +101,12 @@ public class ESNodeCompanionService extends LeaderSelectorListenerAdapter {
     }
     Map<String, List<String>> currentNodeShards = getCurrentNodeShards(path);
     indexBuilder.build(currentNodeShards, configData);
+    try {
+      log.info("Delete index path : {}", path);
+      client.delete().forPath(path);
+    } catch (Exception e) {
+      log.error("Delete path error", e);
+    }
   }
 
   private void assignShards(Map<String, String[]> allNodes, JSONObject configData,
