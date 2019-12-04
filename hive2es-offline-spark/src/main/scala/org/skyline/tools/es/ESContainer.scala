@@ -1,5 +1,6 @@
 package org.skyline.tools.es
 
+import java.io.IOException
 import java.nio.channels.{FileChannel, FileLock}
 import java.nio.file._
 import java.util.concurrent.TimeUnit
@@ -36,10 +37,20 @@ class ESContainer(val config: Config, val partitionId: Int) {
     if (!Files.exists(_tmp)) {
       val parentDir = _tmp.getParent
       if (!Files.exists(parentDir)) {
-        Files.createDirectories(parentDir)
+        try {
+          Files.createDirectories(parentDir)
+        } catch {
+          case IOException => log.warn(s"dir already exists $parentDir")
+        }
+
       }
       if (!Files.exists(_tmp)) {
-        Files.createFile(_tmp)
+        try {
+          Files.createFile(_tmp)
+        } catch {
+          case IOException => log.warn(s"lock file already exists $_tmp")
+        }
+
       }
     }
     _tmp
@@ -252,7 +263,7 @@ class ESContainer(val config: Config, val partitionId: Int) {
       val shardStateDir = zipSource.resolve("0").resolve("_state")
       log.info(s"zip shard state from $shardStateDir to ${zipSource.resolve(shardStateName)}")
       CompressionUtils.zip(shardStateDir, zipSource.resolve(shardStateName), "_shard_state")
-      uploadToHdfs(zipSource.resolve(shardStateName),Paths.get(config.hdfsWorkDir, config.indexName, shardStateName))
+      uploadToHdfs(zipSource.resolve(shardStateName), Paths.get(config.hdfsWorkDir, config.indexName, shardStateName))
     }
 
     log.info(s"shard files : ${shardFiles.mkString(",")}")
