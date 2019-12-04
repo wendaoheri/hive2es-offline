@@ -165,6 +165,11 @@ class ESContainer(val config: Config, val partitionId: Int) {
            |          "flush_threshold_size": "10gb",
            |          "durability": "async",
            |          "sync_interval": "10m"
+           |        },
+           |        "routing":{
+           |          "allocation":{
+           |            "disable_allocation":"true"
+           |          }
            |        }
            |    }
            |}

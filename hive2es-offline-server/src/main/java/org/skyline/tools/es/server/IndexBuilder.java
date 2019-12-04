@@ -146,17 +146,11 @@ public class IndexBuilder {
     } catch (Exception e) {
       log.error("delete state file error", e);
     }
-    log.info("Trigger dangling index build {} start", indexName);
-    esClient.triggerDanglingIndexProcess();
-    log.info("Trigger dangling index build {} end", indexName);
     return true;
   }
 
   /**
    * 使用Lucene合并索引会非常慢，所以这里直接进行文件移动，然后重新生成segment信息
-   * @param indexBundlePath
-   * @return
-   * @throws IOException
    */
   private String mergeIndex(String indexBundlePath) throws IOException {
     Path path = Paths.get(indexBundlePath);

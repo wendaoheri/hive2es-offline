@@ -101,11 +101,23 @@ public class ESNodeCompanionService extends LeaderSelectorListenerAdapter {
     }
     Map<String, List<String>> currentNodeShards = getCurrentNodeShards(path);
     indexBuilder.build(currentNodeShards, configData);
-    try {
-      log.info("Delete index path : {}", path);
-      client.delete().forPath(path);
-    } catch (Exception e) {
-      log.error("Delete path error", e);
+    if (leaderSelector.hasLeadership()) {
+
+      try {
+        log.info("Trigger dangling index build {} start", configData.getString("indexName"));
+        esClient.triggerDanglingIndexProcess();
+        log.info("Trigger dangling index build {} end", configData.getString("indexName"));
+      } catch (Exception e) {
+        log.error("Trigger dangling index build error", e);
+      }
+
+      try {
+        log.info("Delete zk index path {}", path);
+        client.delete().deletingChildrenIfNeeded().forPath(path);
+      } catch (Exception e) {
+        log.info("Delete zk index path error", e);
+      }
+
     }
   }
 
@@ -113,12 +125,12 @@ public class ESNodeCompanionService extends LeaderSelectorListenerAdapter {
       String indexZKPath) {
 
     // 建立nodeId -> host之间的映射
-    Map<String, String> nodeToHostMap = Maps.newHashMap();
-    allNodes.entrySet().forEach(x -> {
-      for (String nodeId : x.getValue()) {
-        nodeToHostMap.put(nodeId, x.getKey());
-      }
-    });
+//    Map<String, String> nodeToHostMap = Maps.newHashMap();
+//    allNodes.entrySet().forEach(x -> {
+//      for (String nodeId : x.getValue()) {
+//        nodeToHostMap.put(nodeId, x.getKey());
+//      }
+//    });
 
     List<String> ids = allNodes.values().stream().flatMap(x -> Lists.newArrayList(x).stream())
         .collect(Collectors.toList());

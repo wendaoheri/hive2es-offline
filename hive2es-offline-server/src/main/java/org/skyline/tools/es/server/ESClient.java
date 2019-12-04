@@ -82,7 +82,7 @@ public class ESClient {
    * 也许有更好的API可以使用
    * @return
    */
-  public boolean triggerDanglingIndexProcess() {
+  public boolean triggerDanglingIndexProcess() throws UnknownHostException {
     File homeDir = Files.createTempDir();
     log.info("Fake node home dir is {}", homeDir.toString());
     Set<String> allHostSet = client.listedNodes()
@@ -95,6 +95,7 @@ public class ESClient {
         .put("cluster.name", client.settings().get("cluster.name"))
         .put("node.master", false)
         .put("http.enabled", false)
+        .put("network.host",Utils.getIp())
         .put("path.home", homeDir.toString())
         .putArray("discovery.zen.ping.unicast.hosts",
             allHostSet.toArray(new String[allHostSet.size()]))
