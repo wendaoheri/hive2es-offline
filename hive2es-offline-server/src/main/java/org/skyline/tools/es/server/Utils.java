@@ -1,5 +1,6 @@
 package org.skyline.tools.es.server;
 
+import com.fasterxml.jackson.annotation.ObjectIdGenerators.UUIDGenerator;
 import java.io.BufferedInputStream;
 import java.io.File;
 import java.io.IOException;
@@ -13,6 +14,7 @@ import java.nio.file.Paths;
 import java.nio.file.attribute.PosixFilePermission;
 import java.nio.file.attribute.PosixFilePermissions;
 import java.util.Set;
+import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.compress.archivers.ArchiveEntry;
 import org.apache.commons.compress.archivers.zip.ZipArchiveInputStream;
@@ -138,5 +140,19 @@ public class Utils {
     Set<PosixFilePermission> perms = PosixFilePermissions.fromString("rwxrwxrwx");
     Files.setPosixFilePermissions(path, perms);
 
+  }
+
+  public static String getId() {
+    String result;
+    try {
+      result = getHostName();
+    } catch (UnknownHostException e) {
+      try {
+        result = getIp();
+      } catch (UnknownHostException ex) {
+        result = UUID.randomUUID().toString();
+      }
+    }
+    return result;
   }
 }

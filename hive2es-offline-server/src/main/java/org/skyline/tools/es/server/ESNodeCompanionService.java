@@ -114,10 +114,11 @@ public class ESNodeCompanionService extends LeaderSelectorListenerAdapter {
       try {
         while (true) {
           List<String> children = this.getChildren(path);
-          if (CollectionUtils.isNotEmpty(children)) {
+          if (CollectionUtils.isEmpty(children)) {
             log.info("All node success : {}", indexName);
             break;
           }
+          log.info("Wait all node complete merge index {} ...", indexName);
           Thread.sleep(100);
         }
       } catch (InterruptedException e) {
