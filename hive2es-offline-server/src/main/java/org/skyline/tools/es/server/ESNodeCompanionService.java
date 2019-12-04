@@ -13,6 +13,7 @@ import java.util.concurrent.CountDownLatch;
 import java.util.stream.Collectors;
 import javax.annotation.PostConstruct;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.collections.CollectionUtils;
 import org.apache.curator.framework.CuratorFramework;
 import org.apache.curator.framework.recipes.cache.PathChildrenCache;
 import org.apache.curator.framework.recipes.cache.PathChildrenCacheEvent;
@@ -95,18 +96,38 @@ public class ESNodeCompanionService extends LeaderSelectorListenerAdapter {
     // 在开始build之前先各自更新一下当前节点上运行es data node数量，防止datanode掉线
     updateESNodeInfo();
     JSONObject configData = JSON.parseObject(data);
+    String indexName = configData.getString("indexName");
     if (leaderSelector.hasLeadership()) {
       Map<String, String[]> allNodes = this.getAllNodes();
       assignShards(allNodes, configData, path);
     }
     Map<String, List<String>> currentNodeShards = getCurrentNodeShards(path);
     indexBuilder.build(currentNodeShards, configData);
+    try {
+      log.info("Delete zk path for node {}", path + "/" + Utils.getHostName());
+      client.delete().forPath(path + "/" + Utils.getHostName());
+    } catch (Exception e) {
+      log.error("Delete zk path error", e);
+    }
+
     if (leaderSelector.hasLeadership()) {
+      try {
+        while (true) {
+          List<String> children = this.getChildren(path);
+          if (CollectionUtils.isNotEmpty(children)) {
+            log.info("All node success : {}", indexName);
+            break;
+          }
+          Thread.sleep(100);
+        }
+      } catch (InterruptedException e) {
+        log.error("Sleep error", e);
+      }
 
       try {
-        log.info("Trigger dangling index build {} start", configData.getString("indexName"));
+        log.info("Trigger dangling index build {} start", indexName);
         esClient.triggerDanglingIndexProcess();
-        log.info("Trigger dangling index build {} end", configData.getString("indexName"));
+        log.info("Trigger dangling index build {} end", indexName);
       } catch (Exception e) {
         log.error("Trigger dangling index build error", e);
       }
@@ -121,16 +142,17 @@ public class ESNodeCompanionService extends LeaderSelectorListenerAdapter {
     }
   }
 
+  public List<String> getChildren(String path) {
+    try {
+      return client.getChildren().forPath(path);
+    } catch (Exception e) {
+      log.error("Get children error", e);
+    }
+    return null;
+  }
+
   private void assignShards(Map<String, String[]> allNodes, JSONObject configData,
       String indexZKPath) {
-
-    // 建立nodeId -> host之间的映射
-//    Map<String, String> nodeToHostMap = Maps.newHashMap();
-//    allNodes.entrySet().forEach(x -> {
-//      for (String nodeId : x.getValue()) {
-//        nodeToHostMap.put(nodeId, x.getKey());
-//      }
-//    });
 
     List<String> ids = allNodes.values().stream().flatMap(x -> Lists.newArrayList(x).stream())
         .collect(Collectors.toList());
