@@ -1,0 +1,154 @@
+package org.skyline.tools.es.server;
+
+import com.google.common.base.Charsets;
+import com.google.common.collect.Maps;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
+import lombok.Getter;
+import lombok.extern.slf4j.Slf4j;
+import org.apache.curator.framework.CuratorFramework;
+import org.apache.curator.utils.ZKPaths;
+import org.apache.zookeeper.CreateMode;
+import org.apache.zookeeper.data.Stat;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.stereotype.Component;
+
+/**
+ * @author Sean Liu
+ * @date 2019-12-05
+ */
+@Component
+@Slf4j
+public class RegistryCenter {
+
+  @Value("${curator.rootPath:/es_offline}")
+  private String rootPath;
+
+  @Autowired
+  @Getter
+  private CuratorFramework client;
+
+  public boolean isExisted(String path) {
+    try {
+      return null != client.checkExists().forPath(path);
+    } catch (Exception e) {
+      handleZKException(e);
+    }
+    return false;
+  }
+
+
+  public void persist(final String path, final String value) {
+    String fullPath = this.getFullPath(path);
+    log.info("Persis zk path [{}] value [{}]", fullPath, value);
+    try {
+      if (!isExisted(fullPath)) {
+        client.create().creatingParentsIfNeeded().withMode(CreateMode.PERSISTENT)
+            .forPath(fullPath, value.getBytes(Charsets.UTF_8));
+      } else {
+        update(path, value);
+      }
+    } catch (Exception e) {
+      handleZKException(e);
+    }
+  }
+
+  public void update(final String path, final String value) {
+    String fullPath = getFullPath(path);
+    log.info("Update zk path [{}] value [{}]", fullPath, value);
+    try {
+      client.transaction().forOperations(
+          client.transactionOp().check().forPath(fullPath),
+          client.transactionOp().setData().forPath(fullPath, value.getBytes(Charsets.UTF_8))
+      );
+
+    } catch (Exception e) {
+      handleZKException(e);
+    }
+  }
+
+  public void persistEphemeral(final String path, final String value) {
+    String fullPath = getFullPath(path);
+    log.info("Persis ephemeral zk path [{}] value [{}]", fullPath, value);
+    try {
+      if (isExisted(fullPath)) {
+        client.delete().deletingChildrenIfNeeded().forPath(fullPath);
+      }
+      client.create().creatingParentsIfNeeded().withMode(CreateMode.EPHEMERAL)
+          .forPath(fullPath, value.getBytes(Charsets.UTF_8));
+    } catch (final Exception e) {
+      handleZKException(e);
+    }
+  }
+
+  public List<String> getChildrenPaths(final String path) {
+    String fullPath = getFullPath(path);
+    try {
+      return client.getChildren().forPath(fullPath)
+          .stream()
+          .map(x -> this.getShortPath(x))
+          .sorted(Comparator.reverseOrder())
+          .collect(Collectors.toList());
+    } catch (final Exception e) {
+      handleZKException(e);
+      return Collections.emptyList();
+    }
+  }
+
+  public int getNumChildren(final String path) {
+    String fullPath = getFullPath(path);
+    try {
+      Stat stat = client.checkExists().forPath(fullPath);
+      if (null != stat) {
+        return stat.getNumChildren();
+      }
+    } catch (final Exception e) {
+      handleZKException(e);
+    }
+    return 0;
+  }
+
+  public String getValue(final String path) {
+    String fullPath = getFullPath(path);
+    try {
+      return new String(client.getData().forPath(fullPath), Charsets.UTF_8);
+    } catch (final Exception e) {
+      handleZKException(e);
+      return null;
+    }
+  }
+
+  public void delete(final String path) {
+    String fullPath = getFullPath(path);
+    log.info("Delete path [{}]", fullPath);
+    try {
+      client.delete().deletingChildrenIfNeeded().forPath(fullPath);
+    } catch (final Exception e) {
+      handleZKException(e);
+    }
+  }
+
+  private void handleZKException(Exception e) {
+    ZKException zkException = new ZKException(e);
+    log.error("Got ZKException", e);
+    throw zkException;
+  }
+
+  public String getFullPath(String path) {
+    return ZKPaths.makePath(rootPath, path);
+  }
+
+  public String getShortPath(String fullPath) {
+    return fullPath.replace(rootPath, "");
+  }
+
+
+  public void close() {
+    log.info("Registry center close");
+    client.close();
+  }
+}

@@ -47,35 +47,27 @@ public class IndexBuilder {
   private static final String SHARD_STATE = "_shard_state";
 
   public boolean build(Map<String, List<String>> idToShards, JSONObject configData) {
+
     String hdfsWorkDir = configData.getString("hdfsWorkDir");
     String indexName = configData.getString("indexName");
 
     Path localStateDir = Paths.get(Utils.mostFreeDir(workDirs), indexName);
-    log.info("Local state dir is {}", localStateDir.toString());
-    try {
-
-      // download & unzip index state
-      String hdfsStateDir = Paths.get(hdfsWorkDir, indexName, STATE_DIR).toString();
-      String hdfsStateFile = hdfsClient.largestFileInDirectory(hdfsStateDir);
-      log.info("Download index state file from {}", hdfsStateFile);
-      hdfsClient.downloadFile(hdfsStateFile, localStateDir.resolve(STATE_DIR + ".zip").toString());
-      Utils.unzip(localStateDir.resolve(STATE_DIR + ".zip"), localStateDir);
-      Files.deleteIfExists(localStateDir.resolve(STATE_DIR + ".zip"));
-
-      // download & unzip shard state
-      String hdfsShardStateFile = Paths.get(hdfsWorkDir, indexName, SHARD_STATE + ".zip")
-          .toString();
-      log.info("Download shard state file from {}", hdfsShardStateFile);
-      hdfsClient
-          .downloadFile(hdfsShardStateFile, localStateDir.resolve(SHARD_STATE + ".zip").toString());
-      Utils.unzip(localStateDir.resolve(SHARD_STATE + ".zip"), localStateDir);
-      Files.deleteIfExists(localStateDir.resolve(SHARD_STATE + ".zip"));
-
-    } catch (IOException e) {
-      log.error("Download state file from hdfs failed", e);
-      return false;
+    if (downloadStateFile(hdfsWorkDir, indexName, localStateDir)) {
+      if (downloadAndMergeAllShards(idToShards, hdfsWorkDir, indexName, localStateDir)) {
+        try {
+          FileUtils.deleteDirectory(localStateDir.resolve(STATE_DIR).toFile());
+          log.info("Delete state file {}", localStateDir.resolve(STATE_DIR));
+        } catch (Exception e) {
+          log.error("delete state file error", e);
+        }
+        return true;
+      }
     }
+    return false;
+  }
 
+  private boolean downloadAndMergeAllShards(Map<String, List<String>> idToShards,
+      String hdfsWorkDir, String indexName, Path localStateDir) {
     // TODO 这里先单线程操作,下载一个shard，merge一个shard
     for (String nodeId : idToShards.keySet()) {
       List<String> shards = idToShards.get(nodeId);
@@ -133,17 +125,37 @@ public class IndexBuilder {
         } catch (IOException e) {
           log.error(
               "Build index bundle from hdfs[" + srcPath + "] failed", e);
-          return false;
+          return true;
         }
       }
     }
+    return false;
+  }
+
+  private boolean downloadStateFile(String hdfsWorkDir, String indexName, Path localStateDir) {
+    log.info("Local state dir is {}", localStateDir.toString());
     try {
-      FileUtils.deleteDirectory(localStateDir.resolve(STATE_DIR).toFile());
-      log.info("Delete state file {}", localStateDir.resolve(STATE_DIR));
-    } catch (Exception e) {
-      log.error("delete state file error", e);
+      // download & unzip index state
+      String hdfsStateDir = Paths.get(hdfsWorkDir, indexName, STATE_DIR).toString();
+      String hdfsStateFile = hdfsClient.largestFileInDirectory(hdfsStateDir);
+      log.info("Download index state file from {}", hdfsStateFile);
+      hdfsClient.downloadFile(hdfsStateFile, localStateDir.resolve(STATE_DIR + ".zip").toString());
+      Utils.unzip(localStateDir.resolve(STATE_DIR + ".zip"), localStateDir);
+      Files.deleteIfExists(localStateDir.resolve(STATE_DIR + ".zip"));
+
+      // download & unzip shard state
+      String hdfsShardStateFile = Paths.get(hdfsWorkDir, indexName, SHARD_STATE + ".zip")
+          .toString();
+      log.info("Download shard state file from {}", hdfsShardStateFile);
+      hdfsClient
+          .downloadFile(hdfsShardStateFile, localStateDir.resolve(SHARD_STATE + ".zip").toString());
+      Utils.unzip(localStateDir.resolve(SHARD_STATE + ".zip"), localStateDir);
+      Files.deleteIfExists(localStateDir.resolve(SHARD_STATE + ".zip"));
+      return true;
+    } catch (IOException e) {
+      log.error("Download state file from hdfs failed", e);
+      return false;
     }
-    return true;
   }
 
   /**

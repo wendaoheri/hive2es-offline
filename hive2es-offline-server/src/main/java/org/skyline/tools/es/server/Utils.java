@@ -26,16 +26,6 @@ import org.apache.commons.io.IOUtils;
 @Slf4j
 public class Utils {
 
-  public static String getHostName() throws UnknownHostException {
-    InetAddress ia = InetAddress.getLocalHost();
-    return ia.getHostName();
-  }
-
-  public static String getIp() throws UnknownHostException {
-    InetAddress ia = InetAddress.getLocalHost();
-    return ia.getHostAddress();
-  }
-
   public static void unzip(Path src, Path dest) throws IOException {
     try (
         ZipArchiveInputStream in = new ZipArchiveInputStream(
@@ -142,17 +132,4 @@ public class Utils {
 
   }
 
-  public static String getId() {
-    String result;
-    try {
-      result = getHostName();
-    } catch (UnknownHostException e) {
-      try {
-        result = getIp();
-      } catch (UnknownHostException ex) {
-        result = UUID.randomUUID().toString();
-      }
-    }
-    return result;
-  }
 }

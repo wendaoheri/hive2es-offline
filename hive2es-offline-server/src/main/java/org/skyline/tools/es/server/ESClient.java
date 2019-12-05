@@ -3,7 +3,7 @@ package org.skyline.tools.es.server;
 import com.google.common.collect.Maps;
 import com.google.common.io.Files;
 import java.io.File;
-import java.io.IOException;
+import java.net.SocketException;
 import java.net.UnknownHostException;
 import java.util.Iterator;
 import java.util.List;
@@ -21,6 +21,7 @@ import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.monitor.fs.FsInfo.Path;
 import org.elasticsearch.node.Node;
 import org.elasticsearch.node.NodeBuilder;
+import org.skyline.tools.es.server.utils.IpUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
@@ -54,9 +55,9 @@ public class ESClient {
   private boolean isCurrentHostDataNode(NodeInfo info) {
     try {
       return info.getNode().isDataNode() && (
-          info.getHostname().equalsIgnoreCase(Utils.getHostName())
-              || info.getNode().getHostAddress().equalsIgnoreCase(Utils.getIp()));
-    } catch (UnknownHostException e) {
+          info.getHostname().equalsIgnoreCase(IpUtils.getHostName())
+              || info.getNode().getHostAddress().equalsIgnoreCase(IpUtils.getIp()));
+    } catch (UnknownHostException | SocketException e) {
       log.error("Check host error", e);
     }
     return false;
@@ -77,12 +78,10 @@ public class ESClient {
   }
 
   /**
-   * es会将直接复制进来的索引文件视为Dangling index，且不能自动发现
-   * 这里模拟一个es node加入到集群，触发集群的cluster_state update
+   * es会将直接复制进来的索引文件视为Dangling index，且不能自动发现 这里模拟一个es node加入到集群，触发集群的cluster_state update
    * 也许有更好的API可以使用
-   * @return
    */
-  public boolean triggerDanglingIndexProcess() throws UnknownHostException {
+  public boolean triggerDanglingIndexProcess() {
     File homeDir = Files.createTempDir();
     log.info("Fake node home dir is {}", homeDir.toString());
     Set<String> allHostSet = client.listedNodes()
@@ -91,11 +90,21 @@ public class ESClient {
         .collect(Collectors.toSet());
 
     // 这里一定要将启动的节点设置成 NOT master NOT data node，不然有可能引起索引重分片或者master迁移
+    String host;
+    try {
+      host = IpUtils.getIp();
+    } catch (SocketException e) {
+      try {
+        host = IpUtils.getHostName();
+      } catch (UnknownHostException e1) {
+        host = "localhost";
+      }
+    }
     Settings settings = Settings.builder()
         .put("cluster.name", client.settings().get("cluster.name"))
         .put("node.master", false)
         .put("http.enabled", false)
-        .put("network.host",Utils.getIp())
+        .put("network.host", host)
         .put("path.home", homeDir.toString())
         .putArray("discovery.zen.ping.unicast.hosts",
             allHostSet.toArray(new String[allHostSet.size()]))
