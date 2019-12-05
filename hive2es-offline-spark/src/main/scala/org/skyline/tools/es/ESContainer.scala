@@ -48,7 +48,7 @@ class ESContainer(val config: Config, val partitionId: Int) {
         try {
           Files.createFile(_tmp)
         } catch {
-          case IOException => log.warn(s"lock file already exists $_tmp")
+          case IOException => log.warn(s"lock file already exists ${_tmp}")
         }
 
       }
