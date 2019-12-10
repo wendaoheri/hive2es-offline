@@ -33,8 +33,9 @@ public class RegistryCenter {
   private CuratorFramework client;
 
   public boolean isExisted(String path) {
+    String fullPath = getFullPath(path);
     try {
-      return null != client.checkExists().forPath(path);
+      return null != client.checkExists().forPath(fullPath);
     } catch (Exception e) {
       handleZKException(e);
     }
@@ -44,9 +45,9 @@ public class RegistryCenter {
 
   public void persist(final String path, final String value) {
     String fullPath = this.getFullPath(path);
-    log.info("Persis zk path [{}] value [{}]", fullPath, value);
+    log.info("Persist zk path [{}] value [{}]", fullPath, value);
     try {
-      if (!isExisted(fullPath)) {
+      if (!isExisted(path)) {
         client.create().creatingParentsIfNeeded().withMode(CreateMode.PERSISTENT)
             .forPath(fullPath, value.getBytes(Charsets.UTF_8));
       } else {
@@ -73,7 +74,7 @@ public class RegistryCenter {
 
   public void persistEphemeral(final String path, final String value) {
     String fullPath = getFullPath(path);
-    log.info("Persis ephemeral zk path [{}] value [{}]", fullPath, value);
+    log.info("Persist ephemeral zk path [{}] value [{}]", fullPath, value);
     try {
       if (isExisted(fullPath)) {
         client.delete().deletingChildrenIfNeeded().forPath(fullPath);
@@ -88,11 +89,9 @@ public class RegistryCenter {
   public List<String> getChildrenPaths(final String path) {
     String fullPath = getFullPath(path);
     try {
-      return client.getChildren().forPath(fullPath)
-          .stream()
-          .map(x -> this.getShortPath(x))
-          .sorted(Comparator.reverseOrder())
-          .collect(Collectors.toList());
+      List<String> children = client.getChildren().forPath(fullPath);
+      Collections.sort(children);
+      return children;
     } catch (final Exception e) {
       handleZKException(e);
       return Collections.emptyList();

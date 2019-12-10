@@ -129,7 +129,7 @@ public class IndexBuilder {
         }
       }
     }
-    return false;
+    return true;
   }
 
   private boolean downloadStateFile(String hdfsWorkDir, String indexName, Path localStateDir) {

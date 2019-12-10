@@ -40,7 +40,7 @@ class ESContainer(val config: Config, val partitionId: Int) {
         try {
           Files.createDirectories(parentDir)
         } catch {
-          case IOException => log.warn(s"dir already exists $parentDir")
+          case e: IOException => log.warn(s"dir already exists $parentDir")
         }
 
       }
@@ -48,7 +48,7 @@ class ESContainer(val config: Config, val partitionId: Int) {
         try {
           Files.createFile(_tmp)
         } catch {
-          case IOException => log.warn(s"lock file already exists ${_tmp}")
+          case e: IOException => log.warn(s"lock file already exists ${_tmp}")
         }
 
       }

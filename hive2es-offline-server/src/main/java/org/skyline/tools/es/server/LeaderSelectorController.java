@@ -8,6 +8,7 @@ import org.apache.curator.framework.recipes.leader.LeaderSelector;
 import org.apache.curator.framework.recipes.leader.LeaderSelectorListenerAdapter;
 import org.apache.curator.framework.state.ConnectionState;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Component;
 
 /**
@@ -24,6 +25,7 @@ public class LeaderSelectorController extends LeaderSelectorListenerAdapter {
   private RegistryCenter registryCenter;
 
   @Autowired
+  @Lazy
   private NodeService nodeService;
 
   private String LEADER_PATH = "leader";

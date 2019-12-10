@@ -10,6 +10,7 @@ import org.apache.curator.framework.recipes.cache.PathChildrenCacheEvent;
 import org.apache.curator.framework.recipes.cache.PathChildrenCacheEvent.Type;
 import org.apache.curator.framework.recipes.cache.PathChildrenCacheListener;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Component;
 
 /**
@@ -26,6 +27,7 @@ public class IndicesChangeController implements PathChildrenCacheListener {
   private RegistryCenter registryCenter;
 
   @Autowired
+  @Lazy
   private NodeService nodeService;
 
   private PathChildrenCache cache;

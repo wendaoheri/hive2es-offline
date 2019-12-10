@@ -96,7 +96,7 @@ public class NodeService {
 
       if (leaderSelectorController.hasLeadership()) {
         waitAllNodeComplete(indexPath);
-        esClient.triggerDanglingIndexProcess();
+        esClient.triggerClusterChange();
         registryCenter.delete(indexPath);
         log.info("Build index for {} all complete", indexPath);
       }
@@ -117,8 +117,9 @@ public class NodeService {
   public Map<String, String[]> getAllRegisteredNode() {
     Map<String, String[]> result = Maps.newHashMap();
     List<String> childrenPaths = registryCenter.getChildrenPaths(NODE_PATH);
+    log.info("All registered node is {}", childrenPaths);
     for (String path : childrenPaths) {
-      String[] esNodes = registryCenter.getValue(path).split(ES_NODE_JOINER);
+      String[] esNodes = registryCenter.getValue(NODE_PATH + "/" + path).split(ES_NODE_JOINER);
       result.put(path, esNodes);
     }
     return result;
