@@ -6,29 +6,29 @@
     <format>dir</format>
     <format>zip</format>
   </formats>
-  <includeBaseDirectory>true</includeBaseDirectory>
+  <includeBaseDirectory>false</includeBaseDirectory>
   <fileSets>
     <!--需要包含的文件与输出的路径-->
     <fileSet>
       <directory>${project.build.directory}</directory>
-      <outputDirectory>lib</outputDirectory>
+      <outputDirectory>common/lib</outputDirectory>
       <includes>
         <include>*.jar</include>
       </includes>
     </fileSet>
     <fileSet>
       <directory>${project.basedir}/bin</directory>
-      <outputDirectory>bin</outputDirectory>
+      <outputDirectory>common/bin</outputDirectory>
       <fileMode>0755</fileMode>
     </fileSet>
     <fileSet>
-      <directory>src/main/resources</directory>
-      <outputDirectory>conf</outputDirectory>
+      <directory>${project.basedir}/conf</directory>
+      <outputDirectory>diff/conf</outputDirectory>
     </fileSet>
   </fileSets>
   <dependencySets>
     <dependencySet>
-      <outputDirectory>lib</outputDirectory>
+      <outputDirectory>common/lib</outputDirectory>
       <scope>runtime</scope>
     </dependencySet>
   </dependencySets>
