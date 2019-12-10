@@ -10,7 +10,7 @@
   <fileSets>
     <fileSet>
       <directory>${project.build.directory}</directory>
-      <outputDirectory></outputDirectory>
+      <outputDirectory>common</outputDirectory>
       <includes>
         <include>${project.name}.jar</include>
       </includes>
