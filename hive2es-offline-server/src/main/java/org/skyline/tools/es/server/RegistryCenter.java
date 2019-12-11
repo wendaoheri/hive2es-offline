@@ -76,7 +76,7 @@ public class RegistryCenter {
     String fullPath = getFullPath(path);
     log.info("Persist ephemeral zk path [{}] value [{}]", fullPath, value);
     try {
-      if (isExisted(fullPath)) {
+      if (isExisted(path)) {
         client.delete().deletingChildrenIfNeeded().forPath(fullPath);
       }
       client.create().creatingParentsIfNeeded().withMode(CreateMode.EPHEMERAL)
