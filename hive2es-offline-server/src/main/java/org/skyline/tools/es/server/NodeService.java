@@ -15,6 +15,7 @@ import javax.annotation.PreDestroy;
 import lombok.Data;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang.ArrayUtils;
 import org.apache.commons.lang.StringUtils;
 import org.skyline.tools.es.server.utils.IpUtils;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -78,6 +79,7 @@ public class NodeService {
     log.info("Register node {} on path {}", localNode.getNodeId(),
         registryCenter.getFullPath(localNode.getZKPath()));
     registryCenter.persistEphemeral(localNode.getZKPath(), "");
+    this.updateESNodeInfo();
   }
 
   public void buildIndex(String indexPath, String data) {
@@ -121,8 +123,10 @@ public class NodeService {
     log.info("All registered node is {}", childrenPaths);
     for (String path : childrenPaths) {
       String[] esNodes = registryCenter.getValue(NODE_PATH + "/" + path).split(ES_NODE_JOINER);
-      result.put(path, esNodes);
       log.info("Node to ES node is {} : {}", path, Lists.newArrayList(esNodes));
+      if(ArrayUtils.isNotEmpty(esNodes)){
+        result.put(path, esNodes);
+      }
     }
     return result;
   }
@@ -184,6 +188,7 @@ public class NodeService {
     return result;
   }
 
+  //TODO 这里会有分布式执行顺序的问题，master需要等待其他节点完成
   public void updateESNodeInfo() {
     Set<String> nodeNames = esClient.getNodeNameOnHost();
     String nodes = String.join(ES_NODE_JOINER, nodeNames);
