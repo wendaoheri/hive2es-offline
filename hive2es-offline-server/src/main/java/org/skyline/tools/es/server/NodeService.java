@@ -125,7 +125,7 @@ public class NodeService {
     for (String path : childrenPaths) {
       String[] esNodes = registryCenter.getValue(NODE_PATH + "/" + path).split(ES_NODE_JOINER);
       log.info("Node to ES node is {} : {}", path, Lists.newArrayList(esNodes));
-      if(ArrayUtils.isNotEmpty(esNodes)){
+      if (ArrayUtils.isNotEmpty(esNodes)) {
         result.put(path, esNodes);
       }
     }
@@ -162,9 +162,10 @@ public class NodeService {
       String nodeId = x.getKey();
       Map<String, List<Integer>> idToShards = Maps.newHashMap();
       for (String id : x.getValue()) {
+        log.info("ES Node id : {}", id);
         idToShards.put(id, result[ids.indexOf(id)]);
       }
-      if(MapUtils.isNotEmpty(idToShards)){
+      if (MapUtils.isNotEmpty(idToShards)) {
         String idToShardsJSON = JSON.toJSONString(idToShards);
         registryCenter.persistEphemeral(indexPath + "/" + nodeId, idToShardsJSON);
         log.info("Assign shards {} to host [{}]", idToShardsJSON, nodeId);
