@@ -93,17 +93,20 @@ public class NodeService {
       assignShards(configData, indexPath);
     }
     Map<String, List<String>> currentNodeShards = getCurrentNodeShards(indexNodePath);
-    boolean success = indexBuilder.build(currentNodeShards, configData);
-    if (success) {
-      registryCenter.delete(indexNodePath);
-      log.info("Build index for {} complete", indexNodePath);
-
-      if (leaderSelectorController.hasLeadership()) {
-        waitAllNodeComplete(indexPath);
-        esClient.triggerClusterChange();
-        registryCenter.delete(indexPath);
-        log.info("Build index for {} all complete", indexPath);
+    log.info("Current node shards is : {}" ,currentNodeShards);
+    if(MapUtils.isNotEmpty(currentNodeShards)){
+      boolean success = indexBuilder.build(currentNodeShards, configData);
+      if (success) {
+        registryCenter.delete(indexNodePath);
+        log.info("Build index for {} complete", indexNodePath);
       }
+    }
+
+    if (leaderSelectorController.hasLeadership()) {
+      waitAllNodeComplete(indexPath);
+      esClient.triggerClusterChange();
+      registryCenter.delete(indexPath);
+      log.info("Build index for {} all complete", indexPath);
     }
   }
 
@@ -111,6 +114,7 @@ public class NodeService {
     while (registryCenter.getNumChildren(indexPath) != 0) {
       try {
         Thread.sleep(1000);
+        log.info("Wait all node complete, sleep 1000 ms");
       } catch (InterruptedException e) {
         log.error("Wait all node complete error", e);
       }
