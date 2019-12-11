@@ -122,6 +122,7 @@ public class NodeService {
       String[] esNodes = registryCenter.getValue(NODE_PATH + "/" + path).split(ES_NODE_JOINER);
       result.put(path, esNodes);
     }
+    log.info("All registered ES Node is {}", result);
     return result;
   }
 
@@ -129,9 +130,12 @@ public class NodeService {
     Map<String, String[]> allNodes = this.getAllRegisteredNode();
     List<String> ids = allNodes.values().stream().flatMap(x -> Lists.newArrayList(x).stream())
         .collect(Collectors.toList());
+    log.info("ES node id sequence is : {}", ids);
+    // nodeId 0: shard0 shard1 shard2
+    // nodeId 1: shard3 shard 4 shard5
     List<Integer>[] result = new ArrayList[ids.size()];
-    // 按照shardId对dataNode数量进行取余，余数是多少就分配给对应的dataNode
 
+    // 按照shardId对dataNode数量进行取余，余数是多少就分配给对应的dataNode
     Integer numberShards = configData.getInteger("numberShards");
     for (int i = 0; i < numberShards; i++) {
       int mod = i % ids.size();
@@ -143,6 +147,7 @@ public class NodeService {
       shards.add(i);
 
     }
+    log.info("Shard result is : {}", JSON.toJSONString(result));
 
     // 将每一个host对应的node和shardID写到zk
     allNodes.entrySet().forEach(x -> {
@@ -151,6 +156,7 @@ public class NodeService {
       for (String id : x.getValue()) {
         idToShards.put(id, result[ids.indexOf(id)]);
       }
+
       String idToShardsJSON = JSON.toJSONString(idToShards);
       registryCenter.persistEphemeral(indexPath + "/" + nodeId, idToShardsJSON);
       log.info("Assign shards {} to host [{}]", idToShardsJSON, nodeId);
