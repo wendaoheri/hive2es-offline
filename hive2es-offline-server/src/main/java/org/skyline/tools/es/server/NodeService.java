@@ -15,6 +15,7 @@ import javax.annotation.PreDestroy;
 import lombok.Data;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.collections.MapUtils;
 import org.apache.commons.lang.ArrayUtils;
 import org.apache.commons.lang.StringUtils;
 import org.skyline.tools.es.server.utils.IpUtils;
@@ -163,10 +164,11 @@ public class NodeService {
       for (String id : x.getValue()) {
         idToShards.put(id, result[ids.indexOf(id)]);
       }
-
-      String idToShardsJSON = JSON.toJSONString(idToShards);
-      registryCenter.persistEphemeral(indexPath + "/" + nodeId, idToShardsJSON);
-      log.info("Assign shards {} to host [{}]", idToShardsJSON, nodeId);
+      if(MapUtils.isNotEmpty(idToShards)){
+        String idToShardsJSON = JSON.toJSONString(idToShards);
+        registryCenter.persistEphemeral(indexPath + "/" + nodeId, idToShardsJSON);
+        log.info("Assign shards {} to host [{}]", idToShardsJSON, nodeId);
+      }
     });
 
   }
