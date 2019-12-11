@@ -51,6 +51,7 @@ public class NodeService {
   private IndexBuilder indexBuilder;
 
   private volatile boolean started = false;
+  private static final String ASSIGN_FLAG = "_assigned";
 
   @PostConstruct
   public void init() throws Exception {
@@ -83,18 +84,19 @@ public class NodeService {
     this.updateESNodeInfo();
   }
 
-  public void buildIndex(String indexPath, String data) {
 
+  public void buildIndex(String indexPath, String data) {
     String indexNodePath = indexPath + "/" + localNode.getNodeId();
     // 在开始build之前先各自更新一下当前节点上运行es data node数量，防止data node掉线
     this.updateESNodeInfo();
     JSONObject configData = JSON.parseObject(data);
     if (leaderSelectorController.hasLeadership()) {
       assignShards(configData, indexPath);
+      registryCenter.persistEphemeral(indexPath + "/" + ASSIGN_FLAG, "");
     }
-    Map<String, List<String>> currentNodeShards = getCurrentNodeShards(indexNodePath);
-    log.info("Current node shards is : {}" ,currentNodeShards);
-    if(MapUtils.isNotEmpty(currentNodeShards)){
+    Map<String, List<String>> currentNodeShards = getCurrentNodeShards(indexPath, indexNodePath);
+    log.info("Current node shards is : {}", currentNodeShards);
+    if (MapUtils.isNotEmpty(currentNodeShards)) {
       boolean success = indexBuilder.build(currentNodeShards, configData);
       if (success) {
         registryCenter.delete(indexNodePath);
@@ -111,7 +113,7 @@ public class NodeService {
   }
 
   private void waitAllNodeComplete(String indexPath) {
-    while (registryCenter.getNumChildren(indexPath) != 0) {
+    while (registryCenter.getNumChildren(indexPath) != 1) {
       try {
         Thread.sleep(1000);
         log.info("Wait all node complete, sleep 1000 ms");
@@ -137,7 +139,12 @@ public class NodeService {
     return result;
   }
 
+  private void startAssignShard() {
+
+  }
+
   private void assignShards(JSONObject configData, String indexPath) {
+    log.info("Start assign shard");
     Map<String, String[]> allNodes = this.getAllRegisteredNode();
     List<String> ids = allNodes.values().stream()
         .flatMap(x -> Lists.newArrayList(x).stream())
@@ -178,17 +185,18 @@ public class NodeService {
         log.info("Assign shards {} to host [{}]", idToShardsJSON, nodeId);
       }
     });
-
+    log.info("End assign shard");
   }
 
-  private Map<String, List<String>> getCurrentNodeShards(String indexNodePath) {
+  private Map<String, List<String>> getCurrentNodeShards(String indexPath, String indexNodePath) {
     Map<String, List<String>> result = Maps.newHashMap();
     while (true) {
-      if (registryCenter.isExisted(indexNodePath)) {
+      if (registryCenter.isExisted(indexPath + "/" + ASSIGN_FLAG)) {
         break;
       }
       try {
         Thread.sleep(1000);
+        log.info("Wait shard assign and sleep 1000 ms");
       } catch (InterruptedException e) {
         log.error("Wait shard assign error", e);
       }

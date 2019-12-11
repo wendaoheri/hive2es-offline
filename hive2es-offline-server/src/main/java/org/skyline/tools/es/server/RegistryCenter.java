@@ -10,6 +10,7 @@ import java.util.stream.Collectors;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.curator.framework.CuratorFramework;
+import org.apache.curator.framework.recipes.locks.InterProcessMutex;
 import org.apache.curator.utils.ZKPaths;
 import org.apache.zookeeper.CreateMode;
 import org.apache.zookeeper.data.Stat;
@@ -149,5 +150,10 @@ public class RegistryCenter {
   public void close() {
     log.info("Registry center close");
     client.close();
+  }
+
+  public InterProcessMutex getLock(String path) {
+    String fullPath = getFullPath(path);
+    return new InterProcessMutex(client, fullPath);
   }
 }
