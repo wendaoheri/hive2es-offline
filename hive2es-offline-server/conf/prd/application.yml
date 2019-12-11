@@ -1,15 +1,15 @@
 elasticsearch:
-  clusterNodes: localhost:9300
-  clusterName: elasticsearch
+  clusterNodes: 26.6.0.95:9300
+  clusterName: paic-elasticsearch
 
 curator:
-  retryCount: 5  #重试次数
-  elapsedTimeMs: 5000   #重试间隔时间
-  connectString: 127.0.0.1:2181   # zookeeper 地址
-  sessionTimeoutMs: 60000  # session超时时间
-  connectionTimeoutMs: 5000  # 连接超时时间
+  retryCount: 5
+  elapsedTimeMs: 5000
+  connectString: cnsz033391,cnsz033392,cnsz033393,cnsz033394,cnsz033398
+  sessionTimeoutMs: 5000
+  connectionTimeoutMs: 5000
   rootPath: /es_offline
 server:
   port: 0
 workDir:
-  /tmp/es_offline
+  /data/data01/es_offline,/data/data02/es_offline,/data/data03/es_offline,/data/data04/es_offline,/data/data05/es_offline,/data/data06/es_offline,/data/data07/es_offline,/data/data08/es_offline,/data/data09/es_offline,/data/data10/es_offline,/data/data11/es_offline,/data/data12/es_offline
