@@ -123,9 +123,10 @@ public class NodeService {
     List<String> childrenPaths = registryCenter.getChildrenPaths(NODE_PATH);
     log.info("All registered node is {}", childrenPaths);
     for (String path : childrenPaths) {
-      String[] esNodes = registryCenter.getValue(NODE_PATH + "/" + path).split(ES_NODE_JOINER);
+      String esNodesStr = registryCenter.getValue(NODE_PATH + "/" + path);
+      String[] esNodes = esNodesStr.split(ES_NODE_JOINER);
       log.info("Node to ES node is {} : {}", path, Lists.newArrayList(esNodes));
-      if (ArrayUtils.isNotEmpty(esNodes)) {
+      if (ArrayUtils.isNotEmpty(esNodes) && StringUtils.isNotEmpty(esNodesStr)) {
         result.put(path, esNodes);
       }
     }
@@ -162,8 +163,10 @@ public class NodeService {
       String nodeId = x.getKey();
       Map<String, List<Integer>> idToShards = Maps.newHashMap();
       for (String id : x.getValue()) {
-        log.info("ES Node id : {}", id);
-        idToShards.put(id, result[ids.indexOf(id)]);
+        List<Integer> shards = result[ids.indexOf(id)];
+        if (shards != null && !shards.isEmpty()) {
+          idToShards.put(id, shards);
+        }
       }
       if (MapUtils.isNotEmpty(idToShards)) {
         String idToShardsJSON = JSON.toJSONString(idToShards);
