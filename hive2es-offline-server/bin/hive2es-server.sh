@@ -17,8 +17,7 @@
 #JDK所在路径
 cd ${0%/*}/..
 
-
-JAVA_HOME=$JAVA_HOME
+JAVA_HOME=/usr/java/latest
 
 #执行程序启动所使用的系统用户，考虑到安全，推荐不使用root帐号
 RUNNING_USER=`whoami`
