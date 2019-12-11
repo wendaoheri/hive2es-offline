@@ -15,6 +15,7 @@ import javax.annotation.PreDestroy;
 import lombok.Data;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang.StringUtils;
 import org.skyline.tools.es.server.utils.IpUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
@@ -121,14 +122,16 @@ public class NodeService {
     for (String path : childrenPaths) {
       String[] esNodes = registryCenter.getValue(NODE_PATH + "/" + path).split(ES_NODE_JOINER);
       result.put(path, esNodes);
+      log.info("Node to ES node is {} : {}", path, Lists.newArrayList(esNodes));
     }
-    log.info("All registered ES Node is {}", result);
     return result;
   }
 
   private void assignShards(JSONObject configData, String indexPath) {
     Map<String, String[]> allNodes = this.getAllRegisteredNode();
-    List<String> ids = allNodes.values().stream().flatMap(x -> Lists.newArrayList(x).stream())
+    List<String> ids = allNodes.values().stream()
+        .flatMap(x -> Lists.newArrayList(x).stream())
+        .filter(x -> StringUtils.isNotEmpty(x))
         .collect(Collectors.toList());
     log.info("ES node id sequence is : {}", ids);
     // nodeId 0: shard0 shard1 shard2
