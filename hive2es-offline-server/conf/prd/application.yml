@@ -13,3 +13,7 @@ server:
   port: 0
 workDir:
   /data/data01/es_offline,/data/data02/es_offline,/data/data03/es_offline,/data/data04/es_offline,/data/data05/es_offline,/data/data06/es_offline,/data/data07/es_offline,/data/data08/es_offline,/data/data09/es_offline,/data/data10/es_offline,/data/data11/es_offline,/data/data12/es_offline
+threadpools:
+  download:
+    corePoolSize: 10
+    maxPoolSize: 10
