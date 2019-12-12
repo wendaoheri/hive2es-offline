@@ -13,3 +13,7 @@ server:
   port: 0
 workDir:
   /tmp/es_offline
+threadpools:
+  download:
+    corePoolSize: 10
+    maxPoolSize: 20
