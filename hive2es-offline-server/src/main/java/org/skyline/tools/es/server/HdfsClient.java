@@ -43,29 +43,50 @@ public class HdfsClient {
     return conf;
   }
 
-  public void downloadFolder(String srcPath, String dstPath) throws IOException {
-    File dstDir = new File(dstPath);
-    if (!dstDir.exists()) {
-      dstDir.mkdirs();
-    }
-    FileStatus[] srcFileStatus = fs.listStatus(new Path(srcPath));
-    Path[] srcFilePath = FileUtil.stat2Paths(srcFileStatus);
-    List<Future<Boolean>> futures = Lists.newArrayList();
-    for (int i = 0; i < srcFilePath.length; i++) {
-      String srcFile = srcFilePath[i].toString();
-      int fileNamePosi = srcFile.lastIndexOf('/');
-      String fileName = srcFile.substring(fileNamePosi + 1);
-      futures.add(downloadFile(srcPath + '/' + fileName, dstPath + '/' + fileName));
-    }
-    futures.forEach(x -> {
-      try {
-        x.get();
-      } catch (InterruptedException | ExecutionException e) {
-        log.error("Wait download error", e);
+  public List<String> listFiles(String path) {
+    List<String> results = Lists.newArrayList();
+    try {
+      FileStatus[] srcFileStatus = fs.listStatus(new Path(path));
+      for (FileStatus status : srcFileStatus) {
+        results.add(status.toString());
       }
-    });
+    } catch (IOException e) {
+      log.error("List folder error", e);
+    }
+    return results;
   }
 
+//  public Future<Boolean> downloadFolder(String srcPath, String dstPath) throws IOException {
+//    File dstDir = new File(dstPath);
+//    if (!dstDir.exists()) {
+//      dstDir.mkdirs();
+//    }
+//    FileStatus[] srcFileStatus = fs.listStatus(new Path(srcPath));
+//    Path[] srcFilePath = FileUtil.stat2Paths(srcFileStatus);
+//    List<Future<Boolean>> futures = Lists.newArrayList();
+//    for (int i = 0; i < srcFilePath.length; i++) {
+//      String srcFile = srcFilePath[i].toString();
+//      int fileNamePosi = srcFile.lastIndexOf('/');
+//      String fileName = srcFile.substring(fileNamePosi + 1);
+//      futures.add(download(srcPath + '/' + fileName, dstPath + '/' + fileName));
+//    }
+//    futures.forEach(x -> {
+//      try {
+//        x.get();
+//      } catch (InterruptedException | ExecutionException e) {
+//        log.error("Wait download error", e);
+//      }
+//    });
+//    return new AsyncResult<>(true);
+//  }
+//
+//  public Future<Boolean> download(String srcPath, String dstPath) throws IOException {
+//    if (fs.isFile(new Path(srcPath))) {
+//      return downloadFile(srcPath, dstPath);
+//    } else {
+//      return downloadFolder(srcPath, dstPath);
+//    }
+//  }
 
   @Async("downloadTaskExecutor")
   public Future<Boolean> downloadFile(String srcPath, String dstPath) throws IOException {

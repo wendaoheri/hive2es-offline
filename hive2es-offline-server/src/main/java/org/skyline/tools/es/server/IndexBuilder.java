@@ -14,8 +14,11 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.Future;
 import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.compress.utils.Lists;
 import org.apache.commons.io.FileUtils;
 import org.apache.lucene.index.SegmentCommitInfo;
 import org.apache.lucene.index.SegmentInfo;
@@ -24,6 +27,8 @@ import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.FSDirectory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.scheduling.annotation.Async;
+import org.springframework.scheduling.annotation.AsyncResult;
 import org.springframework.stereotype.Service;
 
 /**
@@ -69,8 +74,8 @@ public class IndexBuilder {
 
   private boolean downloadAndMergeAllShards(Map<String, List<String>> idToShards,
       String hdfsWorkDir, String indexName, Path localStateDir) {
-    // TODO 这里先单线程操作,下载一个shard，merge一个shard
-    for (String nodeId : idToShards.keySet()) {
+    idToShards.entrySet().parallelStream().forEach(x -> {
+      String nodeId = x.getKey();
       List<String> shards = idToShards.get(nodeId);
       String[] dataPaths = esClient.getDataPathByNodeId(nodeId);
       for (String shardId : shards) {
@@ -85,10 +90,8 @@ public class IndexBuilder {
 
         log.info("Build index shard [{}] for node [{}]", shardId, nodeId);
         try {
-          hdfsClient.downloadFolder(srcPath, destPath);
-          log.info("Download index bundle from hdfs[{}] to local[{}]", srcPath, destPath);
-          unzipBundles(destPath);
-          log.info("Unzip index bundle path {}", destPath);
+          downloadAndUnzipShard(srcPath, destPath);
+
           String finalIndexPath = mergeIndex(destPath);
           log.info("Merge index bundle in dir[{}] ", destPath);
 
@@ -126,7 +129,6 @@ public class IndexBuilder {
         } catch (IOException e) {
           log.error(
               "Build index bundle from hdfs[" + srcPath + "] failed", e);
-          return true;
         } finally {
           try {
             log.info("Delete shard tmp dir {}", destPath);
@@ -136,9 +138,60 @@ public class IndexBuilder {
           }
         }
       }
-    }
+    });
+
     return true;
   }
+
+  public void downloadAndUnzipShard(String srcPath, String destPath) {
+    File dstDir = new File(destPath);
+    if (!dstDir.exists()) {
+      log.info("Dest path not exists and create it {}", destPath);
+      dstDir.mkdirs();
+    }
+    List<String> paths = hdfsClient.listFiles(srcPath);
+    log.info("Download and unzip index bundle from hdfs[{}] to local[{}] start", srcPath, destPath);
+    List<Future<Boolean>> results = Lists.newArrayList();
+    paths.forEach(srcFile -> {
+      String fileName = srcFile.substring(srcFile.lastIndexOf('/') + 1);
+      String from = srcPath + '/' + fileName;
+      String to = destPath + '/' + fileName;
+      log.info("Add download and unzip task from hdfs {} to local {}", from, to);
+      results.add(downloadAndUnzipShardPartition(from, to));
+    });
+    log.info("Wait download and unzip shard files");
+    for (Future<Boolean> result : results) {
+      try {
+        result.get();
+      } catch (InterruptedException | ExecutionException e) {
+        log.error("Wait download and unzip shard file error", e);
+      }
+    }
+    log.info("Wait download and unzip shard files done");
+    log.info("Download and unzip index bundle from hdfs[{}] to local[{}] start", srcPath, destPath);
+  }
+
+  @Async("processTaskExecutor")
+  private Future<Boolean> downloadAndUnzipShardPartition(String srcPath, String destPath) {
+    try {
+      Future<Boolean> downloadSuccess = hdfsClient.downloadFile(srcPath, destPath);
+      downloadSuccess.get();
+      log.info("Download hdfs file success {}", srcPath);
+    } catch (IOException | InterruptedException | ExecutionException e) {
+      log.error("Download shard partition file error", e);
+    }
+
+    try {
+      log.info("Unzip index bundle : {}", destPath);
+      Utils.unzip(Paths.get(destPath), Paths.get(destPath).getParent());
+      log.info("delete index bundle file : {}", destPath);
+      FileUtils.forceDelete(new File(destPath));
+    } catch (IOException e) {
+      log.error("unzip index bundle failed", e);
+    }
+    return new AsyncResult<>(true);
+  }
+
 
   private boolean downloadStateFile(String hdfsWorkDir, String indexName, Path localStateDir) {
     log.info("Local state dir is {}", localStateDir.toString());
@@ -147,7 +200,8 @@ public class IndexBuilder {
       String hdfsStateDir = Paths.get(hdfsWorkDir, indexName, STATE_DIR).toString();
       String hdfsStateFile = hdfsClient.largestFileInDirectory(hdfsStateDir);
       log.info("Download index state file from {}", hdfsStateFile);
-      hdfsClient.downloadFile(hdfsStateFile, localStateDir.resolve(STATE_DIR + ".zip").toString());
+      hdfsClient.downloadFile(hdfsStateFile, localStateDir.resolve(STATE_DIR + ".zip").toString())
+          .get();
       Utils.unzip(localStateDir.resolve(STATE_DIR + ".zip"), localStateDir);
       Files.deleteIfExists(localStateDir.resolve(STATE_DIR + ".zip"));
 
@@ -156,11 +210,12 @@ public class IndexBuilder {
           .toString();
       log.info("Download shard state file from {}", hdfsShardStateFile);
       hdfsClient
-          .downloadFile(hdfsShardStateFile, localStateDir.resolve(SHARD_STATE + ".zip").toString());
+          .downloadFile(hdfsShardStateFile, localStateDir.resolve(SHARD_STATE + ".zip").toString())
+          .get();
       Utils.unzip(localStateDir.resolve(SHARD_STATE + ".zip"), localStateDir);
       Files.deleteIfExists(localStateDir.resolve(SHARD_STATE + ".zip"));
       return true;
-    } catch (IOException e) {
+    } catch (IOException | InterruptedException | ExecutionException e) {
       log.error("Download state file from hdfs failed", e);
       return false;
     }
@@ -278,21 +333,5 @@ public class IndexBuilder {
     return "_" + Integer.toString(segmentInfos.counter++, Character.MAX_RADIX);
   }
 
-  public void unzipBundles(String indexBundlePath) throws IOException {
-    Path zipPath = Paths.get(indexBundlePath);
-    List<Path> zipFiles = Files.list(zipPath)
-        .filter(x -> !x.toString().endsWith("crc") && !x.toFile().isDirectory())
-        .collect(Collectors.toList());
-    zipFiles.parallelStream().forEach(path -> {
-      try {
-        log.info("unzip index bundle : " + path.toString());
-        Utils.unzip(path, zipPath);
-        FileUtils.forceDelete(path.toFile());
-        log.info("delete index bundle file : " + path.toString());
-      } catch (IOException e) {
-        log.error("unzip index bundle failed", e);
-      }
-    });
-  }
 
 }

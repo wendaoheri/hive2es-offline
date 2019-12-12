@@ -27,6 +27,11 @@ public class ThreadPoolConfig {
     return buildExecutor("download");
   }
 
+  @Bean
+  public ThreadPoolTaskExecutor processTaskExecutor() {
+    return buildExecutor("process");
+  }
+
   private ThreadPoolTaskExecutor buildExecutor(String key) {
     ThreadPoolTaskExecutor pool = new ThreadPoolTaskExecutor();
     ThreadPoolProperties props = ThreadPoolProperties.fromMap(this.threadpools.get(key));
