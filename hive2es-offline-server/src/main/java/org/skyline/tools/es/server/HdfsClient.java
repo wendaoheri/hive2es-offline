@@ -46,9 +46,9 @@ public class HdfsClient {
   public List<String> listFiles(String path) {
     List<String> results = Lists.newArrayList();
     try {
-      FileStatus[] srcFileStatus = fs.listStatus(new Path(path));
-      for (FileStatus status : srcFileStatus) {
-        results.add(status.toString());
+      Path[] children = FileUtil.stat2Paths(fs.listStatus(new Path(path)));
+      for (Path child : children) {
+        results.add(child.toString());
       }
     } catch (IOException e) {
       log.error("List folder error", e);
