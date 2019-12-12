@@ -13,6 +13,7 @@ import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.Set;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
@@ -74,8 +75,8 @@ public class IndexBuilder {
 
   private boolean downloadAndMergeAllShards(Map<String, List<String>> idToShards,
       String hdfsWorkDir, String indexName, Path localStateDir) {
-    idToShards.entrySet().parallelStream().forEach(x -> {
-      String nodeId = x.getKey();
+    for (Entry<String, List<String>> entry : idToShards.entrySet()) {
+      String nodeId = entry.getKey();
       List<String> shards = idToShards.get(nodeId);
       String[] dataPaths = esClient.getDataPathByNodeId(nodeId);
       for (String shardId : shards) {
@@ -138,7 +139,7 @@ public class IndexBuilder {
           }
         }
       }
-    });
+    }
 
     return true;
   }
@@ -152,13 +153,13 @@ public class IndexBuilder {
     List<String> paths = hdfsClient.listFiles(srcPath);
     log.info("Download and unzip index bundle from hdfs[{}] to local[{}] start", srcPath, destPath);
     List<Future<Boolean>> results = Lists.newArrayList();
-    paths.forEach(srcFile -> {
+    for (String srcFile : paths) {
       String fileName = srcFile.substring(srcFile.lastIndexOf('/') + 1);
       String from = srcPath + '/' + fileName;
       String to = destPath + '/' + fileName;
       log.info("Add download and unzip task from hdfs {} to local {}", from, to);
       results.add(downloadAndUnzipShardPartition(from, to));
-    });
+    }
     log.info("Wait download and unzip shard files");
     for (Future<Boolean> result : results) {
       try {
