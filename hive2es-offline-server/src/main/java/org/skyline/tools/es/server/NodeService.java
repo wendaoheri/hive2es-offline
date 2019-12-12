@@ -139,10 +139,6 @@ public class NodeService {
     return result;
   }
 
-  private void startAssignShard() {
-
-  }
-
   private void assignShards(JSONObject configData, String indexPath) {
     log.info("Start assign shard");
     Map<String, String[]> allNodes = this.getAllRegisteredNode();
