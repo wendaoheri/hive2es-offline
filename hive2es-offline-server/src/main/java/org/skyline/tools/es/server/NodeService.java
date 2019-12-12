@@ -15,6 +15,9 @@ import javax.annotation.PreDestroy;
 import lombok.Data;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.collections.MapUtils;
+import org.apache.commons.lang.ArrayUtils;
+import org.apache.commons.lang.StringUtils;
 import org.skyline.tools.es.server.utils.IpUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
@@ -48,6 +51,7 @@ public class NodeService {
   private IndexBuilder indexBuilder;
 
   private volatile boolean started = false;
+  private static final String ASSIGN_FLAG = "_assigned";
 
   @PostConstruct
   public void init() throws Exception {
@@ -77,36 +81,42 @@ public class NodeService {
     log.info("Register node {} on path {}", localNode.getNodeId(),
         registryCenter.getFullPath(localNode.getZKPath()));
     registryCenter.persistEphemeral(localNode.getZKPath(), "");
+    this.updateESNodeInfo();
   }
 
-  public void buildIndex(String indexPath, String data) {
 
+  public void buildIndex(String indexPath, String data) {
     String indexNodePath = indexPath + "/" + localNode.getNodeId();
     // 在开始build之前先各自更新一下当前节点上运行es data node数量，防止data node掉线
     this.updateESNodeInfo();
     JSONObject configData = JSON.parseObject(data);
     if (leaderSelectorController.hasLeadership()) {
       assignShards(configData, indexPath);
+      registryCenter.persistEphemeral(indexPath + "/" + ASSIGN_FLAG, "");
     }
-    Map<String, List<String>> currentNodeShards = getCurrentNodeShards(indexNodePath);
-    boolean success = indexBuilder.build(currentNodeShards, configData);
-    if (success) {
-      registryCenter.delete(indexNodePath);
-      log.info("Build index for {} complete", indexNodePath);
-
-      if (leaderSelectorController.hasLeadership()) {
-        waitAllNodeComplete(indexPath);
-        esClient.triggerClusterChange();
-        registryCenter.delete(indexPath);
-        log.info("Build index for {} all complete", indexPath);
+    Map<String, List<String>> currentNodeShards = getCurrentNodeShards(indexPath, indexNodePath);
+    log.info("Current node shards is : {}", currentNodeShards);
+    if (MapUtils.isNotEmpty(currentNodeShards)) {
+      boolean success = indexBuilder.build(currentNodeShards, configData);
+      if (success) {
+        registryCenter.delete(indexNodePath);
+        log.info("Build index for {} complete", indexNodePath);
       }
+    }
+
+    if (leaderSelectorController.hasLeadership()) {
+      waitAllNodeComplete(indexPath);
+      esClient.triggerClusterChange();
+      registryCenter.delete(indexPath);
+      log.info("Build index for {} all complete", indexPath);
     }
   }
 
   private void waitAllNodeComplete(String indexPath) {
-    while (registryCenter.getNumChildren(indexPath) != 0) {
+    while (registryCenter.getNumChildren(indexPath) != 1) {
       try {
         Thread.sleep(1000);
+        log.info("Wait all node complete, sleep 1000 ms");
       } catch (InterruptedException e) {
         log.error("Wait all node complete error", e);
       }
@@ -119,19 +129,33 @@ public class NodeService {
     List<String> childrenPaths = registryCenter.getChildrenPaths(NODE_PATH);
     log.info("All registered node is {}", childrenPaths);
     for (String path : childrenPaths) {
-      String[] esNodes = registryCenter.getValue(NODE_PATH + "/" + path).split(ES_NODE_JOINER);
-      result.put(path, esNodes);
+      String esNodesStr = registryCenter.getValue(NODE_PATH + "/" + path);
+      String[] esNodes = esNodesStr.split(ES_NODE_JOINER);
+      log.info("Node to ES node is {} : {}", path, Lists.newArrayList(esNodes));
+      if (ArrayUtils.isNotEmpty(esNodes) && StringUtils.isNotEmpty(esNodesStr)) {
+        result.put(path, esNodes);
+      }
     }
     return result;
   }
 
-  private void assignShards(JSONObject configData, String indexPath) {
-    Map<String, String[]> allNodes = this.getAllRegisteredNode();
-    List<String> ids = allNodes.values().stream().flatMap(x -> Lists.newArrayList(x).stream())
-        .collect(Collectors.toList());
-    List<Integer>[] result = new ArrayList[ids.size()];
-    // 按照shardId对dataNode数量进行取余，余数是多少就分配给对应的dataNode
+  private void startAssignShard() {
 
+  }
+
+  private void assignShards(JSONObject configData, String indexPath) {
+    log.info("Start assign shard");
+    Map<String, String[]> allNodes = this.getAllRegisteredNode();
+    List<String> ids = allNodes.values().stream()
+        .flatMap(x -> Lists.newArrayList(x).stream())
+        .filter(x -> StringUtils.isNotEmpty(x))
+        .collect(Collectors.toList());
+    log.info("ES node id sequence is : {}", ids);
+    // nodeId 0: shard0 shard1 shard2
+    // nodeId 1: shard3 shard 4 shard5
+    List<Integer>[] result = new ArrayList[ids.size()];
+
+    // 按照shardId对dataNode数量进行取余，余数是多少就分配给对应的dataNode
     Integer numberShards = configData.getInteger("numberShards");
     for (int i = 0; i < numberShards; i++) {
       int mod = i % ids.size();
@@ -143,29 +167,36 @@ public class NodeService {
       shards.add(i);
 
     }
+    log.info("Shard result is : {}", JSON.toJSONString(result));
 
     // 将每一个host对应的node和shardID写到zk
     allNodes.entrySet().forEach(x -> {
       String nodeId = x.getKey();
       Map<String, List<Integer>> idToShards = Maps.newHashMap();
       for (String id : x.getValue()) {
-        idToShards.put(id, result[ids.indexOf(id)]);
+        List<Integer> shards = result[ids.indexOf(id)];
+        if (shards != null && !shards.isEmpty()) {
+          idToShards.put(id, shards);
+        }
       }
-      String idToShardsJSON = JSON.toJSONString(idToShards);
-      registryCenter.persistEphemeral(indexPath + "/" + nodeId, idToShardsJSON);
-      log.info("Assign shards {} to host [{}]", idToShardsJSON, nodeId);
+      if (MapUtils.isNotEmpty(idToShards)) {
+        String idToShardsJSON = JSON.toJSONString(idToShards);
+        registryCenter.persistEphemeral(indexPath + "/" + nodeId, idToShardsJSON);
+        log.info("Assign shards {} to host [{}]", idToShardsJSON, nodeId);
+      }
     });
-
+    log.info("End assign shard");
   }
 
-  private Map<String, List<String>> getCurrentNodeShards(String indexNodePath) {
+  private Map<String, List<String>> getCurrentNodeShards(String indexPath, String indexNodePath) {
     Map<String, List<String>> result = Maps.newHashMap();
     while (true) {
-      if (registryCenter.isExisted(indexNodePath)) {
+      if (registryCenter.isExisted(indexPath + "/" + ASSIGN_FLAG)) {
         break;
       }
       try {
         Thread.sleep(1000);
+        log.info("Wait shard assign and sleep 1000 ms");
       } catch (InterruptedException e) {
         log.error("Wait shard assign error", e);
       }
@@ -175,6 +206,7 @@ public class NodeService {
     return result;
   }
 
+  //TODO 这里会有分布式执行顺序的问题，master需要等待其他节点完成
   public void updateESNodeInfo() {
     Set<String> nodeNames = esClient.getNodeNameOnHost();
     String nodes = String.join(ES_NODE_JOINER, nodeNames);

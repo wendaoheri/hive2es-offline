@@ -1,6 +1,7 @@
 package org.skyline.tools.es.server;
 
 import com.alibaba.fastjson.JSONObject;
+import java.io.File;
 import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
@@ -55,7 +56,7 @@ public class IndexBuilder {
     if (downloadStateFile(hdfsWorkDir, indexName, localStateDir)) {
       if (downloadAndMergeAllShards(idToShards, hdfsWorkDir, indexName, localStateDir)) {
         try {
-          FileUtils.deleteDirectory(localStateDir.resolve(STATE_DIR).toFile());
+          FileUtils.deleteDirectory(localStateDir.toFile());
           log.info("Delete state file {}", localStateDir.resolve(STATE_DIR));
         } catch (Exception e) {
           log.error("delete state file error", e);
@@ -126,6 +127,13 @@ public class IndexBuilder {
           log.error(
               "Build index bundle from hdfs[" + srcPath + "] failed", e);
           return true;
+        } finally {
+          try {
+            log.info("Delete shard tmp dir {}", destPath);
+            FileUtils.deleteDirectory(new File(destPath));
+          } catch (IOException e) {
+            log.error("Delete shard tmp dir error", e);
+          }
         }
       }
     }

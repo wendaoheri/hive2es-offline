@@ -17,8 +17,7 @@
 #JDK所在路径
 cd ${0%/*}/..
 
-
-JAVA_HOME=$JAVA_HOME
+JAVA_HOME=/usr/java/latest
 
 #执行程序启动所使用的系统用户，考虑到安全，推荐不使用root帐号
 RUNNING_USER=`whoami`
@@ -31,10 +30,10 @@ APP_MAINCLASS=org.skyline.tools.es.server.ApplicationEntry
 
 #拼凑完整的classpath参数，包括指定lib目录下所有的jar
 CLASSPATH=$APP_HOME/classes
+CLASSPATH="$CLASSPATH":$APP_HOME/conf
 for i in "$APP_HOME"/lib/*.jar; do
    CLASSPATH="$CLASSPATH":"$i"
 done
-CLASSPATH="$CLASSPATH":$APP_HOME/conf
 
 #java虚拟机启动参数
 JAVA_OPTS="-ms512m -mx512m -Xmn256m -Djava.awt.headless=true -XX:MaxPermSize=128m"
