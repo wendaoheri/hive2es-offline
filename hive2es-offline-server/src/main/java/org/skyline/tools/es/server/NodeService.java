@@ -95,12 +95,15 @@ public class NodeService {
       registryCenter.persistEphemeral(indexPath + "/" + ASSIGN_FLAG, "");
     }
     Map<String, List<String>> currentNodeShards = getCurrentNodeShards(indexPath, indexNodePath);
-    log.info("Current node shards is : {}", currentNodeShards);
-    if (MapUtils.isNotEmpty(currentNodeShards)) {
-      boolean success = indexBuilder.build(currentNodeShards, configData);
-      if (success) {
-        registryCenter.delete(indexNodePath);
-        log.info("Build index for {} complete", indexNodePath);
+
+    if(MapUtils.isNotEmpty(currentNodeShards)){
+      log.info("Current node shards is : {}", currentNodeShards);
+      if (MapUtils.isNotEmpty(currentNodeShards)) {
+        boolean success = indexBuilder.build(currentNodeShards, configData);
+        if (success) {
+          registryCenter.delete(indexNodePath);
+          log.info("Build index for {} complete", indexNodePath);
+        }
       }
     }
 
@@ -197,8 +200,10 @@ public class NodeService {
         log.error("Wait shard assign error", e);
       }
     }
-    JSONObject data = JSON.parseObject(registryCenter.getValue(indexNodePath));
-    data.keySet().forEach(x -> result.put(x, data.getJSONArray(x).toJavaList(String.class)));
+    if(registryCenter.isExisted(indexNodePath)){
+      JSONObject data = JSON.parseObject(registryCenter.getValue(indexNodePath));
+      data.keySet().forEach(x -> result.put(x, data.getJSONArray(x).toJavaList(String.class)));
+    }
     return result;
   }
 
