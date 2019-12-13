@@ -18,5 +18,5 @@ threadpools:
     corePoolSize: 10
     maxPoolSize: 10
   process:
-    corePoolSize: 20
-    maxPoolSize: 20
+    corePoolSize: 10
+    maxPoolSize: 10
