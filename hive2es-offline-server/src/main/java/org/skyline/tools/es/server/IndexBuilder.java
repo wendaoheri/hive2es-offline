@@ -15,6 +15,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 import java.util.stream.Collectors;
@@ -30,7 +31,10 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.scheduling.annotation.AsyncResult;
+import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 import org.springframework.stereotype.Service;
+import org.springframework.util.concurrent.ListenableFuture;
+import org.springframework.util.concurrent.ListenableFutureCallback;
 
 /**
  * @author Sean Liu
@@ -48,6 +52,12 @@ public class IndexBuilder {
 
   @Autowired
   private ESClient esClient;
+
+  @Autowired
+  private ThreadPoolTaskExecutor processTaskExecutor;
+
+  @Autowired
+  private ThreadPoolTaskExecutor downloadTaskExecutor;
 
   private static final String STATE_DIR = "_state";
 
@@ -75,11 +85,11 @@ public class IndexBuilder {
 
   private boolean downloadAndMergeAllShards(Map<String, List<String>> idToShards,
       String hdfsWorkDir, String indexName, Path localStateDir) {
-    for (Entry<String, List<String>> entry : idToShards.entrySet()) {
+    idToShards.entrySet().parallelStream().forEach(entry -> {
       String nodeId = entry.getKey();
       List<String> shards = idToShards.get(nodeId);
       String[] dataPaths = esClient.getDataPathByNodeId(nodeId);
-      for (String shardId : shards) {
+      shards.parallelStream().forEach(shardId -> {
         // 选择最空闲的一个路径放索引
         String dataPath = Utils.mostFreeDir(dataPaths);
         log.info("Most free data dir is {}", dataPath);
@@ -91,42 +101,12 @@ public class IndexBuilder {
 
         log.info("Build index shard [{}] for node [{}]", shardId, nodeId);
         try {
+          // Need Sync
           downloadAndUnzipShard(srcPath, destPath);
 
           String finalIndexPath = mergeIndex(destPath);
           log.info("Merge index bundle in dir[{}] ", destPath);
-
-          // 从临时目录把索引移到es的data下面
-          Path from = Paths.get(finalIndexPath);
-          Path to = Paths.get(dataPath, "indices", indexName, shardId);
-
-          if (!Files.exists(to.getParent())) {
-            log.info("Create index folder : {}", to.getParent());
-            Files.createDirectories(to.getParent());
-          }
-
-          log.info("Move index from {} to {}", from, to);
-          Files.move(from, to);
-          log.info("Delete old shard _state file {}", to.resolve(STATE_DIR));
-          FileUtils.deleteDirectory(to.resolve(STATE_DIR).toFile());
-          log.info("Copy new shard _state file from {} to {}", localStateDir.resolve(SHARD_STATE),
-              to.resolve(STATE_DIR));
-          FileUtils.copyDirectory(localStateDir.resolve(SHARD_STATE).toFile(),
-              to.resolve(STATE_DIR).toFile());
-
-          if (Files.list(to.getParent()).filter(p -> p.toString().endsWith(STATE_DIR)).count()
-              == 0L) {
-            FileUtils.copyDirectory(localStateDir.resolve(STATE_DIR).toFile(),
-                to.getParent().resolve(STATE_DIR).toFile());
-            Utils.setPermissionRecursive(to.getParent().resolve(STATE_DIR));
-            Utils.setPermissions(to.getParent());
-            log.info("Copy state file from {} to {}", localStateDir.resolve(STATE_DIR),
-                to.getParent().resolve(STATE_DIR));
-          } else {
-            log.info("State file exists");
-          }
-
-          Utils.setPermissionRecursive(to);
+          moveShardFileToESDataDir(indexName, localStateDir, shardId, dataPath, finalIndexPath);
         } catch (IOException e) {
           log.error(
               "Build index bundle from hdfs[" + srcPath + "] failed", e);
@@ -138,9 +118,8 @@ public class IndexBuilder {
             log.error("Delete shard tmp dir error", e);
           }
         }
-      }
-    }
-
+      });
+    });
     return true;
   }
 
@@ -152,45 +131,86 @@ public class IndexBuilder {
     }
     List<String> paths = hdfsClient.listFiles(srcPath);
     log.info("Download and unzip index bundle from hdfs[{}] to local[{}] start", srcPath, destPath);
-    List<Future<Boolean>> results = Lists.newArrayList();
-    for (String srcFile : paths) {
+    List<Future<?>> futures = Lists.newArrayList();
+    paths.forEach(srcFile -> {
       String fileName = srcFile.substring(srcFile.lastIndexOf('/') + 1);
       String from = srcPath + '/' + fileName;
       String to = destPath + '/' + fileName;
-      log.info("Add download and unzip task from hdfs {} to local {}", from, to);
-      results.add(downloadAndUnzipShardPartition(from, to));
-    }
-    log.info("Wait download and unzip shard files");
-    for (Future<Boolean> result : results) {
-      try {
-        result.get();
-      } catch (InterruptedException | ExecutionException e) {
-        log.error("Wait download and unzip shard file error", e);
+      futures.add(submitDownloadAndUnzipShardPartitionTask(from, to));
+    });
+
+    log.info("Wait all partition download and unzip");
+    try {
+      for (Future<?> future : futures) {
+        future.get();
       }
+    } catch (InterruptedException | ExecutionException e) {
+      log.info("Wait all partition download and unzip error", e);
     }
-    log.info("Wait download and unzip shard files done");
     log.info("Download and unzip index bundle from hdfs[{}] to local[{}] start", srcPath, destPath);
   }
 
-  @Async("processTaskExecutor")
-  private Future<Boolean> downloadAndUnzipShardPartition(String srcPath, String destPath) {
-    try {
-      Future<Boolean> downloadSuccess = hdfsClient.downloadFile(srcPath, destPath);
-      downloadSuccess.get();
-      log.info("Download hdfs file success {}", srcPath);
-    } catch (IOException | InterruptedException | ExecutionException e) {
-      log.error("Download shard partition file error", e);
+  private Future<?> submitDownloadAndUnzipShardPartitionTask(String srcPath, String destPath) {
+    log.info("Submit download and unzip task from {} to {}", srcPath, destPath);
+
+    return processTaskExecutor.submit(() -> {
+      Future<?> f = downloadTaskExecutor.submit(() -> {
+        try {
+          hdfsClient.downloadFile(srcPath, destPath);
+        } catch (IOException e) {
+          log.error("Download index file " + srcPath + "error", e);
+        }
+      });
+      try {
+        log.info("Wait download complete : {}", srcPath);
+        f.get();
+      } catch (InterruptedException | ExecutionException e) {
+        log.error("Wait download error");
+      }
+      try {
+        log.info("Unzip index bundle : {}", destPath);
+        Utils.unzip(Paths.get(destPath), Paths.get(destPath).getParent());
+        log.info("delete index bundle file : {}", destPath);
+        FileUtils.forceDelete(new File(destPath));
+      } catch (IOException e) {
+        log.error("unzip index bundle failed", e);
+      }
+    });
+  }
+
+  private void moveShardFileToESDataDir(String indexName, Path localStateDir, String shardId,
+      String dataPath, String finalIndexPath) throws IOException {
+    // 从临时目录把索引移到es的data下面
+    Path from = Paths.get(finalIndexPath);
+    Path to = Paths.get(dataPath, "indices", indexName, shardId);
+
+    if (!Files.exists(to.getParent())) {
+      log.info("Create index folder : {}", to.getParent());
+      Files.createDirectories(to.getParent());
     }
 
-    try {
-      log.info("Unzip index bundle : {}", destPath);
-      Utils.unzip(Paths.get(destPath), Paths.get(destPath).getParent());
-      log.info("delete index bundle file : {}", destPath);
-      FileUtils.forceDelete(new File(destPath));
-    } catch (IOException e) {
-      log.error("unzip index bundle failed", e);
+    log.info("Move index from {} to {}", from, to);
+    Files.move(from, to);
+    log.info("Delete old shard _state file {}", to.resolve(STATE_DIR));
+    FileUtils.deleteDirectory(to.resolve(STATE_DIR).toFile());
+    log.info("Copy new shard _state file from {} to {}", localStateDir.resolve(SHARD_STATE),
+        to.resolve(STATE_DIR));
+    FileUtils.copyDirectory(localStateDir.resolve(SHARD_STATE).toFile(),
+        to.resolve(STATE_DIR).toFile());
+
+    if (Files.list(to.getParent()).filter(p -> p.toString().endsWith(STATE_DIR)).count()
+        == 0L) {
+      FileUtils.copyDirectory(localStateDir.resolve(STATE_DIR).toFile(),
+          to.getParent().resolve(STATE_DIR).toFile());
+      Utils.setPermissionRecursive(to.getParent().resolve(STATE_DIR));
+      Utils.setPermissions(to.getParent());
+      log.info("Copy state file from {} to {}", localStateDir.resolve(STATE_DIR),
+          to.getParent().resolve(STATE_DIR));
+    } else {
+      log.info("State file exists");
     }
-    return new AsyncResult<>(true);
+
+    Utils.setPermissionRecursive(to);
   }
 
 
@@ -201,8 +221,7 @@ public class IndexBuilder {
       String hdfsStateDir = Paths.get(hdfsWorkDir, indexName, STATE_DIR).toString();
       String hdfsStateFile = hdfsClient.largestFileInDirectory(hdfsStateDir);
       log.info("Download index state file from {}", hdfsStateFile);
-      hdfsClient.downloadFile(hdfsStateFile, localStateDir.resolve(STATE_DIR + ".zip").toString())
-          .get();
+      hdfsClient.downloadFile(hdfsStateFile, localStateDir.resolve(STATE_DIR + ".zip").toString());
       Utils.unzip(localStateDir.resolve(STATE_DIR + ".zip"), localStateDir);
       Files.deleteIfExists(localStateDir.resolve(STATE_DIR + ".zip"));
 
@@ -211,12 +230,11 @@ public class IndexBuilder {
           .toString();
       log.info("Download shard state file from {}", hdfsShardStateFile);
       hdfsClient
-          .downloadFile(hdfsShardStateFile, localStateDir.resolve(SHARD_STATE + ".zip").toString())
-          .get();
+          .downloadFile(hdfsShardStateFile, localStateDir.resolve(SHARD_STATE + ".zip").toString());
       Utils.unzip(localStateDir.resolve(SHARD_STATE + ".zip"), localStateDir);
       Files.deleteIfExists(localStateDir.resolve(SHARD_STATE + ".zip"));
       return true;
-    } catch (IOException | InterruptedException | ExecutionException e) {
+    } catch (IOException e) {
       log.error("Download state file from hdfs failed", e);
       return false;
     }
