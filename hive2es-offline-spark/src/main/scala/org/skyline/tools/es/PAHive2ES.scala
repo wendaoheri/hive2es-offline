@@ -84,7 +84,6 @@ object PAHive2ES {
       (r.getAs[String]("index_name").trim, r.getAs[String]("data_type").trim)
     }).toMap
 
-
     val data = input.rdd.map(r => {
       r.schema.fields.flatMap(f => {
         f.dataType match {
@@ -119,12 +118,17 @@ object PAHive2ES {
 
     import scala.collection.JavaConverters._
 
+
+    var indexFieldCount = 0
+
     val mapping = fields.toMap.map { case (esKey, x) => {
       val index = if (!x._2) {
         "no"
       } else if (x._1.equalsIgnoreCase("string")) {
+        indexFieldCount += 1
         "not_analyzed"
       } else {
+        indexFieldCount += 1
         null
       }
       var result = Map("type" -> dataTypeMapping.getOrElse(esKey, x._1))
@@ -137,7 +141,7 @@ object PAHive2ES {
       (esKey, result.asJava)
     }
     }.asJava
-
+    log.info(s"Mapping index field count / total field : [$indexFieldCount / ${mapping.size()}]")
 
     val mappingObj = JSON.toJSON(mapping).asInstanceOf[JSONObject]
 
