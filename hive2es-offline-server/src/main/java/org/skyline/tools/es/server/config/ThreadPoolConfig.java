@@ -4,7 +4,6 @@ import java.lang.reflect.InvocationTargetException;
 import java.util.Map;
 import java.util.Optional;
 import lombok.Data;
-import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.beanutils.BeanUtilsBean2;
 import org.springframework.boot.context.properties.ConfigurationProperties;
@@ -54,67 +53,28 @@ public class ThreadPoolConfig {
     return pool;
   }
 
+  @Data
+  public static class ThreadPoolProperties {
+
+    private Integer corePoolSize;
+    private Integer maxPoolSize;
+    private Integer queueCapacity;
+    private Boolean allowCoreThreadTimeOut;
+    private String threadGroupName;
+    private String threadNamePrefix;
+    private Integer keepAliveSeconds;
+    private Integer awaitTerminationSeconds;
+    private Boolean daemon;
+    private Boolean waitForTasksToCompleteOnShutdown;
+
+    public static ThreadPoolProperties fromMap(Map<String, Object> map)
+        throws InvocationTargetException, IllegalAccessException {
+      ThreadPoolProperties props = new ThreadPoolProperties();
+      BeanUtilsBean2.getInstance().populate(props, map);
+      return props;
+    }
+
+  }
 
 }
 
-@Data
-class ThreadPoolProperties {
-
-  private Integer corePoolSize;
-  private Integer maxPoolSize;
-  private Integer queueCapacity;
-  private Boolean allowCoreThreadTimeOut;
-  private String threadGroupName;
-  private String threadNamePrefix;
-  private Integer keepAliveSeconds;
-  private Integer awaitTerminationSeconds;
-  private Boolean daemon;
-  private Boolean waitForTasksToCompleteOnShutdown;
-
-  public static ThreadPoolProperties fromMap(Map<String, Object> map)
-      throws InvocationTargetException, IllegalAccessException {
-    ThreadPoolProperties props = new ThreadPoolProperties();
-    BeanUtilsBean2.getInstance().populate(props, map);
-    return props;
-  }
-
-  public void setCorePoolSize(Integer corePoolSize) {
-    this.corePoolSize = corePoolSize;
-  }
-
-  public void setMaxPoolSize(Integer maxPoolSize) {
-    this.maxPoolSize = maxPoolSize;
-  }
-
-  public void setQueueCapacity(Integer queueCapacity) {
-    this.queueCapacity = queueCapacity;
-  }
-
-  public void setAllowCoreThreadTimeOut(Boolean allowCoreThreadTimeOut) {
-    this.allowCoreThreadTimeOut = allowCoreThreadTimeOut;
-  }
-
-  public void setThreadGroupName(String threadGroupName) {
-    this.threadGroupName = threadGroupName;
-  }
-
-  public void setThreadNamePrefix(String threadNamePrefix) {
-    this.threadNamePrefix = threadNamePrefix;
-  }
-
-  public void setKeepAliveSeconds(Integer keepAliveSeconds) {
-    this.keepAliveSeconds = keepAliveSeconds;
-  }
-
-  public void setAwaitTerminationSeconds(Integer awaitTerminationSeconds) {
-    this.awaitTerminationSeconds = awaitTerminationSeconds;
-  }
-
-  public void setDaemon(Boolean daemon) {
-    this.daemon = daemon;
-  }
-
-  public void setWaitForTasksToCompleteOnShutdown(Boolean waitForTasksToCompleteOnShutdown) {
-    this.waitForTasksToCompleteOnShutdown = waitForTasksToCompleteOnShutdown;
-  }
-}

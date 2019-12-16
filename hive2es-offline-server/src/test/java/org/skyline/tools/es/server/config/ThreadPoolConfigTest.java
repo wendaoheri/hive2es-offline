@@ -52,12 +52,12 @@ public class ThreadPoolConfigTest {
   private TransportClient transportClient;
 
   @Autowired
-  private ThreadPoolTaskExecutor downloadTaskExecutor;
+  private ThreadPoolTaskExecutor processTaskExecutor;
 
 
   @Test
   public void test() {
-    assert downloadTaskExecutor != null;
+    assert processTaskExecutor != null;
   }
 
 }
