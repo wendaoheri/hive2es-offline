@@ -1,9 +1,12 @@
 package org.skyline.tools.es.server.config;
 
+import java.lang.reflect.InvocationTargetException;
 import java.util.Map;
 import java.util.Optional;
 import lombok.Data;
-import org.springframework.beans.BeanUtils;
+import lombok.Setter;
+import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.beanutils.BeanUtilsBean2;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -18,23 +21,22 @@ import org.springframework.stereotype.Component;
 @ConfigurationProperties
 @Configuration
 @Data
+@Slf4j
 public class ThreadPoolConfig {
 
   private Map<String, Map<String, Object>> threadpools;
 
   @Bean
-  public ThreadPoolTaskExecutor downloadTaskExecutor() {
-    return buildExecutor("download");
-  }
-
-  @Bean
-  public ThreadPoolTaskExecutor processTaskExecutor() {
+  public ThreadPoolTaskExecutor processTaskExecutor()
+      throws InvocationTargetException, IllegalAccessException {
     return buildExecutor("process");
   }
 
-  private ThreadPoolTaskExecutor buildExecutor(String key) {
+  private ThreadPoolTaskExecutor buildExecutor(String key)
+      throws InvocationTargetException, IllegalAccessException {
     ThreadPoolTaskExecutor pool = new ThreadPoolTaskExecutor();
     ThreadPoolProperties props = ThreadPoolProperties.fromMap(this.threadpools.get(key));
+    log.info("Init threadpool [{}] with props : {}", key, props);
     Optional.ofNullable(props.getCorePoolSize()).ifPresent(x -> pool.setCorePoolSize(x));
     Optional.ofNullable(props.getMaxPoolSize()).ifPresent(x -> pool.setMaxPoolSize(x));
     Optional.ofNullable(props.getQueueCapacity()).ifPresent(x -> pool.setQueueCapacity(x));
@@ -48,6 +50,7 @@ public class ThreadPoolConfig {
     Optional.ofNullable(props.getDaemon()).ifPresent(x -> pool.setDaemon(x));
     Optional.ofNullable(props.getWaitForTasksToCompleteOnShutdown())
         .ifPresent(x -> pool.setWaitForTasksToCompleteOnShutdown(x));
+    log.info("Threadpool [{}] is {}", key, pool);
     return pool;
   }
 
@@ -68,10 +71,50 @@ class ThreadPoolProperties {
   private Boolean daemon;
   private Boolean waitForTasksToCompleteOnShutdown;
 
-  public static ThreadPoolProperties fromMap(Map<String, Object> map) {
+  public static ThreadPoolProperties fromMap(Map<String, Object> map)
+      throws InvocationTargetException, IllegalAccessException {
     ThreadPoolProperties props = new ThreadPoolProperties();
-    BeanUtils.copyProperties(map, props);
+    BeanUtilsBean2.getInstance().populate(props, map);
     return props;
   }
 
+  public void setCorePoolSize(Integer corePoolSize) {
+    this.corePoolSize = corePoolSize;
+  }
+
+  public void setMaxPoolSize(Integer maxPoolSize) {
+    this.maxPoolSize = maxPoolSize;
+  }
+
+  public void setQueueCapacity(Integer queueCapacity) {
+    this.queueCapacity = queueCapacity;
+  }
+
+  public void setAllowCoreThreadTimeOut(Boolean allowCoreThreadTimeOut) {
+    this.allowCoreThreadTimeOut = allowCoreThreadTimeOut;
+  }
+
+  public void setThreadGroupName(String threadGroupName) {
+    this.threadGroupName = threadGroupName;
+  }
+
+  public void setThreadNamePrefix(String threadNamePrefix) {
+    this.threadNamePrefix = threadNamePrefix;
+  }
+
+  public void setKeepAliveSeconds(Integer keepAliveSeconds) {
+    this.keepAliveSeconds = keepAliveSeconds;
+  }
+
+  public void setAwaitTerminationSeconds(Integer awaitTerminationSeconds) {
+    this.awaitTerminationSeconds = awaitTerminationSeconds;
+  }
+
+  public void setDaemon(Boolean daemon) {
+    this.daemon = daemon;
+  }
+
+  public void setWaitForTasksToCompleteOnShutdown(Boolean waitForTasksToCompleteOnShutdown) {
+    this.waitForTasksToCompleteOnShutdown = waitForTasksToCompleteOnShutdown;
+  }
 }

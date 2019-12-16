@@ -14,9 +14,6 @@ server:
 workDir:
   /tmp/es_offline
 threadpools:
-  download:
-    corePoolSize: 10
-    maxPoolSize: 20
   process:
     corePoolSize: 20
     maxPoolSize: 20

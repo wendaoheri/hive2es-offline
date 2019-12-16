@@ -13,9 +13,7 @@ import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Map.Entry;
 import java.util.Set;
-import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 import java.util.stream.Collectors;
@@ -29,12 +27,8 @@ import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.FSDirectory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.scheduling.annotation.Async;
-import org.springframework.scheduling.annotation.AsyncResult;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 import org.springframework.stereotype.Service;
-import org.springframework.util.concurrent.ListenableFuture;
-import org.springframework.util.concurrent.ListenableFutureCallback;
 
 /**
  * @author Sean Liu
@@ -55,9 +49,6 @@ public class IndexBuilder {
 
   @Autowired
   private ThreadPoolTaskExecutor processTaskExecutor;
-
-  @Autowired
-  private ThreadPoolTaskExecutor downloadTaskExecutor;
 
   private static final String STATE_DIR = "_state";
 
@@ -154,18 +145,10 @@ public class IndexBuilder {
     log.info("Submit download and unzip task from {} to {}", srcPath, destPath);
 
     return processTaskExecutor.submit(() -> {
-      Future<?> f = downloadTaskExecutor.submit(() -> {
-        try {
-          hdfsClient.downloadFile(srcPath, destPath);
-        } catch (IOException e) {
-          log.error("Download index file " + srcPath + "error", e);
-        }
-      });
       try {
-        log.info("Wait download complete : {}", srcPath);
-        f.get();
-      } catch (InterruptedException | ExecutionException e) {
-        log.error("Wait download error");
+        hdfsClient.downloadFile(srcPath, destPath);
+      } catch (IOException e) {
+        log.error("Download index file " + srcPath + "error", e);
       }
       try {
         log.info("Unzip index bundle : {}", destPath);
