@@ -2,6 +2,7 @@ package org.skyline.tools.es
 
 import java.nio.file.{Files, Paths}
 import java.util.Date
+import java.util.concurrent.atomic.AtomicLong
 
 import com.alibaba.fastjson.{JSON, JSONObject}
 import org.apache.commons.lang.time.DateFormatUtils
@@ -119,16 +120,16 @@ object PAHive2ES {
     import scala.collection.JavaConverters._
 
 
-    var indexFieldCount = 0
+    val indexFieldCount = new AtomicLong()
 
     val mapping = fields.toMap.map { case (esKey, x) => {
       val index = if (!x._2) {
         "no"
       } else if (x._1.equalsIgnoreCase("string")) {
-        indexFieldCount += 1
+        indexFieldCount.incrementAndGet()
         "not_analyzed"
       } else {
-        indexFieldCount += 1
+        indexFieldCount.incrementAndGet()
         null
       }
       var result = Map("type" -> dataTypeMapping.getOrElse(esKey, x._1))
@@ -141,7 +142,7 @@ object PAHive2ES {
       (esKey, result.asJava)
     }
     }.asJava
-    log.info(s"Mapping index field count / total field : [$indexFieldCount / ${mapping.size()}]")
+    log.info(s"Mapping index field count / total field : [${indexFieldCount.get()} / ${mapping.size()}]")
 
     val mappingObj = JSON.toJSON(mapping).asInstanceOf[JSONObject]
 
