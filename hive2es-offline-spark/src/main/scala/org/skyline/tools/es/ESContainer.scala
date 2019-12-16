@@ -100,6 +100,8 @@ class ESContainer(val config: Config, val partitionId: Int) {
       .put("threadpool.bulk.size", 4)
       .put("threadpool.bulk.queue_size", 1000)
       .putArray("discovery.zen.ping.unicast.hosts")
+      .put("indices.fielddata.cache.size", "0%")
+      .put("transport.type", "local")
       .build()
   }
   private val clusterName = s"elasticsearch_${partitionId}"
