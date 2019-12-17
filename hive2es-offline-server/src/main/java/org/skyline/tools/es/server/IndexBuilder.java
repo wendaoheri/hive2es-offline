@@ -14,6 +14,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 import java.util.stream.Collectors;
@@ -25,10 +26,12 @@ import org.apache.lucene.index.SegmentInfo;
 import org.apache.lucene.index.SegmentInfos;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.FSDirectory;
+import org.skyline.tools.es.server.config.ThreadPoolConfig.VisibleThreadPoolTaskExecutor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 import org.springframework.stereotype.Service;
+import org.springframework.util.concurrent.ListenableFuture;
+import org.springframework.util.concurrent.ListenableFutureCallback;
 
 /**
  * @author Sean Liu
@@ -48,7 +51,10 @@ public class IndexBuilder {
   private ESClient esClient;
 
   @Autowired
-  private ThreadPoolTaskExecutor processTaskExecutor;
+  private VisibleThreadPoolTaskExecutor processTaskExecutor;
+
+  @Autowired
+  private VisibleThreadPoolTaskExecutor downloadTaskExecutor;
 
   private static final String STATE_DIR = "_state";
 
@@ -127,41 +133,60 @@ public class IndexBuilder {
     }
     List<String> paths = hdfsClient.listFiles(srcPath);
     log.info("Download and unzip index bundle from hdfs[{}] to local[{}] start", srcPath, destPath);
-    List<Future<?>> futures = Lists.newArrayList();
+    CountDownLatch latch = new CountDownLatch(paths.size());
+
     paths.forEach(srcFile -> {
       String fileName = srcFile.substring(srcFile.lastIndexOf('/') + 1);
       String from = srcPath + '/' + fileName;
       String to = destPath + '/' + fileName;
-      futures.add(submitDownloadAndUnzipShardPartitionTask(from, to));
+      submitDownloadAndUnzipShardPartitionTask(from, to, latch);
     });
 
     log.info("Wait all partition download and unzip");
     try {
-      for (Future<?> future : futures) {
-        future.get();
-      }
-    } catch (InterruptedException | ExecutionException e) {
+      latch.wait();
+    } catch (InterruptedException e) {
       log.info("Wait all partition download and unzip error", e);
     }
     log.info("Download and unzip index bundle from hdfs[{}] to local[{}] start", srcPath, destPath);
   }
 
-  private Future<?> submitDownloadAndUnzipShardPartitionTask(String srcPath, String destPath) {
+  private void submitDownloadAndUnzipShardPartitionTask(String srcPath, String destPath,
+      CountDownLatch latch) {
     log.info("Submit download and unzip task from {} to {}", srcPath, destPath);
 
-    return processTaskExecutor.submit(() -> {
+    ListenableFuture<?> downloadListener = downloadTaskExecutor.submitListenable(() -> {
+      log.info("Download start with thread pool info : ");
+      downloadTaskExecutor.showThreadPoolInfo();
       try {
         hdfsClient.downloadFile(srcPath, destPath);
       } catch (IOException e) {
         log.error("Download index file " + srcPath + "error", e);
       }
-      try {
-        log.info("Unzip index bundle : {}", destPath);
-        Utils.unzip(Paths.get(destPath), Paths.get(destPath).getParent());
-        log.info("delete index bundle file : {}", destPath);
-        FileUtils.forceDelete(new File(destPath));
-      } catch (IOException e) {
-        log.error("unzip index bundle failed", e);
+    });
+    downloadListener.addCallback(new ListenableFutureCallback<Object>() {
+
+      @Override
+      public void onSuccess(Object o) {
+        processTaskExecutor.execute(() -> {
+          log.info("Unzip start with thread pool info : ");
+          processTaskExecutor.showThreadPoolInfo();
+          try {
+            log.info("Unzip index bundle : {}", destPath);
+            Utils.unzip(Paths.get(destPath), Paths.get(destPath).getParent());
+            log.info("delete index bundle file : {}", destPath);
+            FileUtils.forceDelete(new File(destPath));
+          } catch (IOException e) {
+            log.error("unzip index bundle failed", e);
+          } finally {
+            latch.countDown();
+          }
+        });
+      }
+
+      @Override
+      public void onFailure(Throwable throwable) {
+        log.error("Download failed", throwable);
       }
     });
   }

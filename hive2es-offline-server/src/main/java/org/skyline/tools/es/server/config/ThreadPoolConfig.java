@@ -30,64 +30,45 @@ public class ThreadPoolConfig {
   private Map<String, Map<String, Object>> threadpools;
 
   @Bean
-  public ThreadPoolTaskExecutor processTaskExecutor()
+  public VisibleThreadPoolTaskExecutor processTaskExecutor()
       throws InvocationTargetException, IllegalAccessException {
     return buildExecutor("process");
   }
 
-  private ThreadPoolTaskExecutor buildExecutor(String key)
+  @Bean
+  public VisibleThreadPoolTaskExecutor downloadTaskExecutor()
       throws InvocationTargetException, IllegalAccessException {
-    ThreadPoolTaskExecutor pool = new ThreadPoolTaskExecutor() {
+    return buildExecutor("download");
+  }
 
-      private void showThreadPoolInfo() {
-        ThreadPoolExecutor executor = getThreadPoolExecutor();
-        if (executor == null) {
-          return;
-        }
-        log.info("Task count [{}], completedTaskCount [{}], activeCount [{}], queueSize [{}]",
-            executor.getTaskCount(),
-            executor.getCompletedTaskCount(),
-            executor.getActiveCount(),
-            executor.getQueue().size()
-        );
-      }
+  public class VisibleThreadPoolTaskExecutor extends ThreadPoolTaskExecutor {
 
-      @Override
-      public void execute(Runnable task) {
-        showThreadPoolInfo();
-        super.execute(task);
+    public void showThreadPoolInfo() {
+      ThreadPoolExecutor executor = getThreadPoolExecutor();
+      if (executor == null) {
+        return;
       }
+      log.info(getThreadPoolInfo());
+    }
 
-      @Override
-      public void execute(Runnable task, long startTimeout) {
-        showThreadPoolInfo();
-        super.execute(task, startTimeout);
+    public String getThreadPoolInfo() {
+      ThreadPoolExecutor executor = getThreadPoolExecutor();
+      if (executor == null) {
+        return null;
       }
+      return String
+          .format("Task count [%d], completedTaskCount [%d], activeCount [%d], queueSize [%d]",
+              executor.getTaskCount(),
+              executor.getCompletedTaskCount(),
+              executor.getActiveCount(),
+              executor.getQueue().size()
+          );
+    }
+  }
 
-      @Override
-      public Future<?> submit(Runnable task) {
-        showThreadPoolInfo();
-        return super.submit(task);
-      }
-
-      @Override
-      public <T> Future<T> submit(Callable<T> task) {
-        showThreadPoolInfo();
-        return super.submit(task);
-      }
-
-      @Override
-      public ListenableFuture<?> submitListenable(Runnable task) {
-        showThreadPoolInfo();
-        return super.submitListenable(task);
-      }
-
-      @Override
-      public <T> ListenableFuture<T> submitListenable(Callable<T> task) {
-        showThreadPoolInfo();
-        return super.submitListenable(task);
-      }
-    };
+  private VisibleThreadPoolTaskExecutor buildExecutor(String key)
+      throws InvocationTargetException, IllegalAccessException {
+    VisibleThreadPoolTaskExecutor pool = new VisibleThreadPoolTaskExecutor();
 
     ThreadPoolProperties props = ThreadPoolProperties.fromMap(this.threadpools.get(key));
     log.info("Init threadpool [{}] with props : {}", key, props);
