@@ -1,6 +1,7 @@
 package org.skyline.tools.es.server;
 
 import com.fasterxml.jackson.annotation.ObjectIdGenerators.UUIDGenerator;
+import com.google.common.collect.Sets;
 import java.io.BufferedInputStream;
 import java.io.File;
 import java.io.IOException;
@@ -13,6 +14,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.attribute.PosixFilePermission;
 import java.nio.file.attribute.PosixFilePermissions;
+import java.util.HashSet;
 import java.util.Set;
 import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
@@ -68,6 +70,29 @@ public class Utils {
         mostFree = freeSpace;
         result = path;
       }
+    }
+    return result;
+  }
+
+  public static String mostFreeDir(Set<String> paths) {
+    String result = null;
+    long mostFree = 0L;
+    for (String path : paths) {
+      long freeSpace = new File(path).getFreeSpace();
+      if (freeSpace > mostFree) {
+        mostFree = freeSpace;
+        result = path;
+      }
+    }
+    return result;
+  }
+
+  public static String mostFreeDir(String[] paths, Set<String> chosenPaths) {
+    Set<String> candidatePaths = Sets.newHashSet(paths);
+    candidatePaths.removeAll(chosenPaths);
+    String result = mostFreeDir(candidatePaths);
+    if (result == null) {
+      result = mostFreeDir(chosenPaths);
     }
     return result;
   }
