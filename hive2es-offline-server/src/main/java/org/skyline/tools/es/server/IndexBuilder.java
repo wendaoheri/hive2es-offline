@@ -1,6 +1,7 @@
 package org.skyline.tools.es.server;
 
 import com.alibaba.fastjson.JSONObject;
+import com.google.common.collect.Sets;
 import java.io.File;
 import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
@@ -15,11 +16,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.Future;
 import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.commons.compress.utils.Lists;
 import org.apache.commons.io.FileUtils;
 import org.apache.lucene.index.SegmentCommitInfo;
 import org.apache.lucene.index.SegmentInfo;
@@ -82,20 +80,22 @@ public class IndexBuilder {
 
   private boolean downloadAndMergeAllShards(Map<String, List<String>> idToShards,
       String hdfsWorkDir, String indexName, Path localStateDir) {
+    Set<String> chosenPaths = Sets.newConcurrentHashSet();
     idToShards.entrySet().parallelStream().forEach(entry -> {
       String nodeId = entry.getKey();
       List<String> shards = entry.getValue();
-      downloadAndMergeByNode(nodeId, shards, hdfsWorkDir, indexName, localStateDir);
+      downloadAndMergeByNode(nodeId, shards, hdfsWorkDir, indexName, localStateDir, chosenPaths);
     });
     return true;
   }
 
   private void downloadAndMergeByNode(String nodeId, List<String> shards, String hdfsWorkDir,
-      String indexName, Path localStateDir) {
+      String indexName, Path localStateDir, Set<String> chosenPaths) {
     String[] dataPaths = esClient.getDataPathByNodeId(nodeId);
     shards.parallelStream().forEach(shardId -> {
       // 选择最空闲的一个路径放索引
-      String dataPath = Utils.mostFreeDir(dataPaths);
+      String dataPath = Utils.mostFreeDir(dataPaths, chosenPaths);
+      chosenPaths.add(dataPath);
       log.info("Most free data dir is {}", dataPath);
 
       String srcPath = Paths.get(hdfsWorkDir, indexName, shardId).toString();
