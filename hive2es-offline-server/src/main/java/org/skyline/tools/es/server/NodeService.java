@@ -96,7 +96,7 @@ public class NodeService {
     }
     Map<String, List<String>> currentNodeShards = getCurrentNodeShards(indexPath, indexNodePath);
 
-    if(MapUtils.isNotEmpty(currentNodeShards)){
+    if (MapUtils.isNotEmpty(currentNodeShards)) {
       log.info("Current node shards is : {}", currentNodeShards);
       if (MapUtils.isNotEmpty(currentNodeShards)) {
         boolean success = indexBuilder.build(currentNodeShards, configData);
@@ -116,10 +116,11 @@ public class NodeService {
   }
 
   private void waitAllNodeComplete(String indexPath) {
-    while (registryCenter.getNumChildren(indexPath) != 1) {
+    int leftCount;
+    while ((leftCount = registryCenter.getNumChildren(indexPath)) != 1) {
       try {
         Thread.sleep(1000);
-        log.info("Wait all node complete, sleep 1000 ms");
+        log.info("Wait all node complete, [{}] node left ,sleep 1000 ms", leftCount);
       } catch (InterruptedException e) {
         log.error("Wait all node complete error", e);
       }
@@ -200,7 +201,7 @@ public class NodeService {
         log.error("Wait shard assign error", e);
       }
     }
-    if(registryCenter.isExisted(indexNodePath)){
+    if (registryCenter.isExisted(indexNodePath)) {
       JSONObject data = JSON.parseObject(registryCenter.getValue(indexNodePath));
       data.keySet().forEach(x -> result.put(x, data.getJSONArray(x).toJavaList(String.class)));
     }
