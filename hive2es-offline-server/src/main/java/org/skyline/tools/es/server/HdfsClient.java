@@ -1,7 +1,6 @@
 package org.skyline.tools.es.server;
 
 import com.google.common.collect.Lists;
-import java.io.BufferedInputStream;
 import java.io.BufferedOutputStream;
 import java.io.File;
 import java.io.IOException;
@@ -15,7 +14,6 @@ import org.apache.commons.compress.archivers.ArchiveEntry;
 import org.apache.commons.compress.archivers.zip.ZipArchiveInputStream;
 import org.apache.commons.io.IOUtils;
 import org.apache.hadoop.conf.Configuration;
-import org.apache.hadoop.fs.FSDataInputStream;
 import org.apache.hadoop.fs.FileStatus;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.FileUtil;
@@ -113,7 +111,7 @@ public class HdfsClient {
             throw new IOException("Failed to create directory " + parent);
           }
           try (OutputStream o = new BufferedOutputStream(Files.newOutputStream(f.toPath()),
-              1024 * 1024)) {
+              4 * 1024 * 1024)) {
             IOUtils.copy(in, o);
           }
         }
