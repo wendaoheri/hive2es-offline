@@ -120,7 +120,7 @@ public class NodeService {
     while ((leftCount = registryCenter.getNumChildren(indexPath)) != 1) {
       try {
         Thread.sleep(1000);
-        log.info("Wait all node complete, [{}] node left ,sleep 1000 ms", leftCount);
+        log.info("Wait all node complete, [{}] node left ,sleep 1000 ms", leftCount - 1);
       } catch (InterruptedException e) {
         log.error("Wait all node complete error", e);
       }
