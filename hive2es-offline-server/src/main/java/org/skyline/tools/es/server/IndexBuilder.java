@@ -144,7 +144,7 @@ public class IndexBuilder {
 
     log.info("Wait all partition download and unzip");
     try {
-      latch.wait();
+      latch.await();
     } catch (InterruptedException e) {
       log.info("Wait all partition download and unzip error", e);
     }
