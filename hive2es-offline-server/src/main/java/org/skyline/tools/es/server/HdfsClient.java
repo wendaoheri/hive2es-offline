@@ -112,7 +112,8 @@ public class HdfsClient {
           if (!parent.isDirectory() && !parent.mkdirs()) {
             throw new IOException("Failed to create directory " + parent);
           }
-          try (OutputStream o = new BufferedOutputStream(Files.newOutputStream(f.toPath()))) {
+          try (OutputStream o = new BufferedOutputStream(Files.newOutputStream(f.toPath()),
+              1024 * 1024)) {
             IOUtils.copy(in, o);
           }
         }
