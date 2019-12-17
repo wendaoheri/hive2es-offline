@@ -16,7 +16,7 @@ workDir:
 threadpools:
   process:
     corePoolSize: 10
-    maxPoolSize: 10
+    maxPoolSize: 20
   download:
     corePoolSize: 10
     maxPoolSize: 10
