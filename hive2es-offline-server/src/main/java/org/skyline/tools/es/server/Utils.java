@@ -1,22 +1,18 @@
 package org.skyline.tools.es.server;
 
-import com.fasterxml.jackson.annotation.ObjectIdGenerators.UUIDGenerator;
 import com.google.common.collect.Sets;
 import java.io.BufferedInputStream;
+import java.io.BufferedOutputStream;
 import java.io.File;
 import java.io.IOException;
 import java.io.OutputStream;
-import java.net.InetAddress;
-import java.net.UnknownHostException;
 import java.nio.file.FileStore;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.attribute.PosixFilePermission;
 import java.nio.file.attribute.PosixFilePermissions;
-import java.util.HashSet;
 import java.util.Set;
-import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.compress.archivers.ArchiveEntry;
 import org.apache.commons.compress.archivers.zip.ZipArchiveInputStream;
@@ -50,7 +46,7 @@ public class Utils {
           if (!parent.isDirectory() && !parent.mkdirs()) {
             throw new IOException("failed to create directory " + parent);
           }
-          try (OutputStream o = Files.newOutputStream(f.toPath())) {
+          try (OutputStream o = new BufferedOutputStream(Files.newOutputStream(f.toPath()))) {
             IOUtils.copy(in, o);
           }
         }
