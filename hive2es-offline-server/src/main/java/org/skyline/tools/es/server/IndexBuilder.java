@@ -174,10 +174,10 @@ public class IndexBuilder {
           try {
             log.info("Unzip index bundle : {}", destPath);
             Utils.unzip(Paths.get(destPath), Paths.get(destPath).getParent());
-            log.info("delete index bundle file : {}", destPath);
+            log.info("Delete index bundle file : {}", destPath);
             FileUtils.forceDelete(new File(destPath));
           } catch (IOException e) {
-            log.error("unzip index bundle failed", e);
+            log.error("Unzip index bundle failed", e);
           } finally {
             latch.countDown();
           }
