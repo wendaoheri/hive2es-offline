@@ -164,6 +164,7 @@ public class IndexBuilder {
       } finally {
         latch.countDown();
         log.info("Download and unzip end with thread pool info : ");
+        downloadTaskExecutor.showThreadPoolInfo();
       }
     });
   }
