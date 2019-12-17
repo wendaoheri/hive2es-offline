@@ -154,39 +154,16 @@ public class IndexBuilder {
   private void submitDownloadAndUnzipShardPartitionTask(String srcPath, String destPath,
       CountDownLatch latch) {
     log.info("Submit download and unzip task from {} to {}", srcPath, destPath);
-
-    ListenableFuture<?> downloadListener = downloadTaskExecutor.submitListenable(() -> {
-      log.info("Download start with thread pool info : ");
+    downloadTaskExecutor.execute(() -> {
+      log.info("Download and unzip start with thread pool info : ");
       downloadTaskExecutor.showThreadPoolInfo();
       try {
-        hdfsClient.downloadFile(srcPath, destPath);
+        hdfsClient.downloadAndUnzipFile(srcPath, destPath);
       } catch (IOException e) {
         log.error("Download index file " + srcPath + "error", e);
-      }
-    });
-    downloadListener.addCallback(new ListenableFutureCallback<Object>() {
-
-      @Override
-      public void onSuccess(Object o) {
-        processTaskExecutor.execute(() -> {
-          log.info("Unzip start with thread pool info : ");
-          processTaskExecutor.showThreadPoolInfo();
-          try {
-            log.info("Unzip index bundle : {}", destPath);
-            Utils.unzip(Paths.get(destPath), Paths.get(destPath).getParent());
-            log.info("Delete index bundle file : {}", destPath);
-            FileUtils.forceDelete(new File(destPath));
-          } catch (IOException e) {
-            log.error("Unzip index bundle failed", e);
-          } finally {
-            latch.countDown();
-          }
-        });
-      }
-
-      @Override
-      public void onFailure(Throwable throwable) {
-        log.error("Download failed", throwable);
+      } finally {
+        latch.countDown();
+        log.info("Download and unzip end with thread pool info : ");
       }
     });
   }

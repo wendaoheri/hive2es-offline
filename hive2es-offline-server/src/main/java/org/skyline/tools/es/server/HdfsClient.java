@@ -1,12 +1,21 @@
 package org.skyline.tools.es.server;
 
 import com.google.common.collect.Lists;
+import java.io.BufferedInputStream;
+import java.io.BufferedOutputStream;
 import java.io.File;
 import java.io.IOException;
+import java.io.OutputStream;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 import java.util.List;
 import javax.annotation.PostConstruct;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.compress.archivers.ArchiveEntry;
+import org.apache.commons.compress.archivers.zip.ZipArchiveInputStream;
+import org.apache.commons.io.IOUtils;
 import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.fs.FSDataInputStream;
 import org.apache.hadoop.fs.FileStatus;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.FileUtil;
@@ -78,6 +87,37 @@ public class HdfsClient {
   public void downloadFile(String srcPath, String dstPath) throws IOException {
     log.info("Download from hdfs {} to local {}", srcPath, dstPath);
     fs.copyToLocalFile(false, new Path(srcPath), new Path(dstPath), true);
+  }
+
+  public void downloadAndUnzipFile(String srcPath, String dstPath) throws IOException {
+
+    try (
+        ZipArchiveInputStream in = new ZipArchiveInputStream(
+            fs.open(new Path(srcPath), 1024 * 1024))
+    ) {
+      ArchiveEntry entry;
+      while ((entry = in.getNextEntry()) != null) {
+        if (!in.canReadEntryData(entry)) {
+          // log something?
+          continue;
+        }
+
+        File f = Paths.get(dstPath).resolve(entry.getName()).toFile();
+        if (entry.isDirectory()) {
+          if (!f.isDirectory() && !f.mkdirs()) {
+            throw new IOException("Failed to create directory " + f);
+          }
+        } else {
+          File parent = f.getParentFile();
+          if (!parent.isDirectory() && !parent.mkdirs()) {
+            throw new IOException("Failed to create directory " + parent);
+          }
+          try (OutputStream o = new BufferedOutputStream(Files.newOutputStream(f.toPath()))) {
+            IOUtils.copy(in, o);
+          }
+        }
+      }
+    }
   }
 
   public String largestFileInDirectory(String dir) throws IOException {
