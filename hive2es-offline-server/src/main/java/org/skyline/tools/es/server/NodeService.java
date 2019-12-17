@@ -208,7 +208,6 @@ public class NodeService {
     return result;
   }
 
-  //TODO 这里会有分布式执行顺序的问题，master需要等待其他节点完成
   public void updateESNodeInfo() {
     Set<String> nodeNames = esClient.getNodeNameOnHost();
     String nodes = String.join(ES_NODE_JOINER, nodeNames);
