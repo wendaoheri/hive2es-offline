@@ -17,3 +17,6 @@ threadpools:
   process:
     corePoolSize: 10
     maxPoolSize: 10
+  download:
+    corePoolSize: 10
+      maxPoolSize: 10
