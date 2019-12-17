@@ -138,7 +138,7 @@ public class IndexBuilder {
     paths.forEach(srcFile -> {
       String fileName = srcFile.substring(srcFile.lastIndexOf('/') + 1);
       String from = srcPath + '/' + fileName;
-      String to = destPath + '/' + fileName;
+      String to = destPath;
       submitDownloadAndUnzipShardPartitionTask(from, to, latch);
     });
 
