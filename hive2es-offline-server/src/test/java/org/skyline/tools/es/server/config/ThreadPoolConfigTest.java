@@ -58,6 +58,7 @@ public class ThreadPoolConfigTest {
   @Test
   public void test() {
     assert processTaskExecutor != null;
+
   }
 
 }

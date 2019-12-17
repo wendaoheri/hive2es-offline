@@ -3,6 +3,9 @@ package org.skyline.tools.es.server.config;
 import java.lang.reflect.InvocationTargetException;
 import java.util.Map;
 import java.util.Optional;
+import java.util.concurrent.Callable;
+import java.util.concurrent.Future;
+import java.util.concurrent.ThreadPoolExecutor;
 import lombok.Data;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.beanutils.BeanUtilsBean2;
@@ -11,6 +14,7 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 import org.springframework.stereotype.Component;
+import org.springframework.util.concurrent.ListenableFuture;
 
 /**
  * @author Sean Liu
@@ -33,7 +37,58 @@ public class ThreadPoolConfig {
 
   private ThreadPoolTaskExecutor buildExecutor(String key)
       throws InvocationTargetException, IllegalAccessException {
-    ThreadPoolTaskExecutor pool = new ThreadPoolTaskExecutor();
+    ThreadPoolTaskExecutor pool = new ThreadPoolTaskExecutor() {
+
+      private void showThreadPoolInfo() {
+        ThreadPoolExecutor executor = getThreadPoolExecutor();
+        if (executor == null) {
+          return;
+        }
+        log.info("Task count [{}], completedTaskCount [{}], activeCount [{}], queueSize [{}]",
+            executor.getTaskCount(),
+            executor.getCompletedTaskCount(),
+            executor.getActiveCount(),
+            executor.getQueue().size()
+        );
+      }
+
+      @Override
+      public void execute(Runnable task) {
+        showThreadPoolInfo();
+        super.execute(task);
+      }
+
+      @Override
+      public void execute(Runnable task, long startTimeout) {
+        showThreadPoolInfo();
+        super.execute(task, startTimeout);
+      }
+
+      @Override
+      public Future<?> submit(Runnable task) {
+        showThreadPoolInfo();
+        return super.submit(task);
+      }
+
+      @Override
+      public <T> Future<T> submit(Callable<T> task) {
+        showThreadPoolInfo();
+        return super.submit(task);
+      }
+
+      @Override
+      public ListenableFuture<?> submitListenable(Runnable task) {
+        showThreadPoolInfo();
+        return super.submitListenable(task);
+      }
+
+      @Override
+      public <T> ListenableFuture<T> submitListenable(Callable<T> task) {
+        showThreadPoolInfo();
+        return super.submitListenable(task);
+      }
+    };
+
     ThreadPoolProperties props = ThreadPoolProperties.fromMap(this.threadpools.get(key));
     log.info("Init threadpool [{}] with props : {}", key, props);
     Optional.ofNullable(props.getCorePoolSize()).ifPresent(x -> pool.setCorePoolSize(x));

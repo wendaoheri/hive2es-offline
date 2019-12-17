@@ -78,40 +78,45 @@ public class IndexBuilder {
       String hdfsWorkDir, String indexName, Path localStateDir) {
     idToShards.entrySet().parallelStream().forEach(entry -> {
       String nodeId = entry.getKey();
-      List<String> shards = idToShards.get(nodeId);
-      String[] dataPaths = esClient.getDataPathByNodeId(nodeId);
-      shards.parallelStream().forEach(shardId -> {
-        // 选择最空闲的一个路径放索引
-        String dataPath = Utils.mostFreeDir(dataPaths);
-        log.info("Most free data dir is {}", dataPath);
-
-        String srcPath = Paths.get(hdfsWorkDir, indexName, shardId).toString();
-        String workDir = Utils.sameDiskDir(workDirs, dataPath);
-        log.info("Chosen work dir is {}", workDir);
-        String destPath = Paths.get(workDir, indexName, shardId).toString();
-
-        log.info("Build index shard [{}] for node [{}]", shardId, nodeId);
-        try {
-          // Need Sync
-          downloadAndUnzipShard(srcPath, destPath);
-
-          String finalIndexPath = mergeIndex(destPath);
-          log.info("Merge index bundle in dir[{}] ", destPath);
-          moveShardFileToESDataDir(indexName, localStateDir, shardId, dataPath, finalIndexPath);
-        } catch (IOException e) {
-          log.error(
-              "Build index bundle from hdfs[" + srcPath + "] failed", e);
-        } finally {
-          try {
-            log.info("Delete shard tmp dir {}", destPath);
-            FileUtils.deleteDirectory(new File(destPath));
-          } catch (IOException e) {
-            log.error("Delete shard tmp dir error", e);
-          }
-        }
-      });
+      List<String> shards = entry.getValue();
+      downloadAndMergeByNode(nodeId, shards, hdfsWorkDir, indexName, localStateDir);
     });
     return true;
+  }
+
+  private void downloadAndMergeByNode(String nodeId, List<String> shards, String hdfsWorkDir,
+      String indexName, Path localStateDir) {
+    String[] dataPaths = esClient.getDataPathByNodeId(nodeId);
+    shards.parallelStream().forEach(shardId -> {
+      // 选择最空闲的一个路径放索引
+      String dataPath = Utils.mostFreeDir(dataPaths);
+      log.info("Most free data dir is {}", dataPath);
+
+      String srcPath = Paths.get(hdfsWorkDir, indexName, shardId).toString();
+      String workDir = Utils.sameDiskDir(workDirs, dataPath);
+      log.info("Chosen work dir is {}", workDir);
+      String destPath = Paths.get(workDir, indexName, shardId).toString();
+
+      log.info("Build index shard [{}] for node [{}]", shardId, nodeId);
+      try {
+        // Need Sync
+        downloadAndUnzipShard(srcPath, destPath);
+
+        String finalIndexPath = mergeIndex(destPath);
+        log.info("Merge index bundle in dir[{}] ", destPath);
+        moveShardFileToESDataDir(indexName, localStateDir, shardId, dataPath, finalIndexPath);
+      } catch (IOException e) {
+        log.error(
+            "Build index bundle from hdfs[" + srcPath + "] failed", e);
+      } finally {
+        try {
+          log.info("Delete shard tmp dir {}", destPath);
+          FileUtils.deleteDirectory(new File(destPath));
+        } catch (IOException e) {
+          log.error("Delete shard tmp dir error", e);
+        }
+      }
+    });
   }
 
   public void downloadAndUnzipShard(String srcPath, String destPath) {
