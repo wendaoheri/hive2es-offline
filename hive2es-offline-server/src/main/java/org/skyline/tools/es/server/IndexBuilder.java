@@ -68,17 +68,15 @@ public class IndexBuilder {
     String indexName = configData.getString("indexName");
 
     Path localStateDir = Paths.get(Utils.mostFreeDir(workDirs), indexName);
-    if (downloadStateFile(hdfsWorkDir, indexName, localStateDir)) {
-      if (downloadAndMergeAllShards(idToShards, hdfsWorkDir, indexName, localStateDir)) {
-        try {
-          FileUtils.deleteDirectory(localStateDir.toFile());
-          log.info("Delete state file {}", localStateDir.resolve(STATE_DIR));
-          completedIndices.remove(indexName);
-        } catch (Exception e) {
-          log.error("delete state file error", e);
-        }
-        return true;
+    if (downloadAndMergeAllShards(idToShards, hdfsWorkDir, indexName, localStateDir)) {
+      try {
+        FileUtils.deleteDirectory(localStateDir.toFile());
+        log.info("Delete state file {}", localStateDir.resolve(STATE_DIR));
+        completedIndices.remove(indexName);
+      } catch (Exception e) {
+        log.error("delete state file error", e);
       }
+      return true;
     }
     return false;
   }
@@ -112,6 +110,8 @@ public class IndexBuilder {
       try {
         // Need Sync
         downloadAndUnzipShard(srcPath, destPath, indexName);
+
+        downloadStateFile(hdfsWorkDir, indexName, localStateDir);
 
         String finalIndexPath = mergeIndex(destPath);
         log.info("Merge index bundle in dir[{}] ", destPath);
@@ -234,7 +234,13 @@ public class IndexBuilder {
   }
 
 
-  private boolean downloadStateFile(String hdfsWorkDir, String indexName, Path localStateDir) {
+  private synchronized boolean downloadStateFile(String hdfsWorkDir, String indexName,
+      Path localStateDir) {
+    if (Files.exists(localStateDir.resolve(STATE_DIR)) && Files
+        .exists(localStateDir.resolve(SHARD_STATE))) {
+      log.info("State file already downloaded");
+      return true;
+    }
     log.info("Local state dir is {}", localStateDir.toString());
     try {
       // download & unzip index state
