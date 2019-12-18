@@ -149,9 +149,9 @@ public class IndexBuilder {
           log.info("Index completed and all partition submitted");
           break;
         } else {
-          log.info("Wait index complete for 5s...");
+          log.info("Wait index complete for 10s...");
           try {
-            Thread.sleep(5000);
+            Thread.sleep(10000);
           } catch (InterruptedException e) {
             log.info("Wait index complete error", e);
           }
