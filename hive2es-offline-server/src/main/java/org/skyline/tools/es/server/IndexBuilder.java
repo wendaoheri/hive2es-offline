@@ -1,6 +1,7 @@
 package org.skyline.tools.es.server;
 
 import com.alibaba.fastjson.JSONObject;
+import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
 import java.io.File;
 import java.io.IOException;
@@ -18,6 +19,7 @@ import java.util.Set;
 import java.util.concurrent.CountDownLatch;
 import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.compress.utils.Lists;
 import org.apache.commons.io.FileUtils;
 import org.apache.lucene.index.SegmentCommitInfo;
 import org.apache.lucene.index.SegmentInfo;
@@ -58,6 +60,8 @@ public class IndexBuilder {
 
   private static final String SHARD_STATE = "_shard_state";
 
+  private Map<String, Boolean> completedIndices = Maps.newConcurrentMap();
+
   public boolean build(Map<String, List<String>> idToShards, JSONObject configData) {
 
     String hdfsWorkDir = configData.getString("hdfsWorkDir");
@@ -69,6 +73,7 @@ public class IndexBuilder {
         try {
           FileUtils.deleteDirectory(localStateDir.toFile());
           log.info("Delete state file {}", localStateDir.resolve(STATE_DIR));
+          completedIndices.remove(indexName);
         } catch (Exception e) {
           log.error("delete state file error", e);
         }
@@ -106,7 +111,7 @@ public class IndexBuilder {
       log.info("Build index shard [{}] for node [{}]", shardId, nodeId);
       try {
         // Need Sync
-        downloadAndUnzipShard(srcPath, destPath);
+        downloadAndUnzipShard(srcPath, destPath, indexName);
 
         String finalIndexPath = mergeIndex(destPath);
         log.info("Merge index bundle in dir[{}] ", destPath);
@@ -125,30 +130,54 @@ public class IndexBuilder {
     });
   }
 
-  public void downloadAndUnzipShard(String srcPath, String destPath) {
+  public void downloadAndUnzipShard(String srcPath, String destPath, String indexName) {
+    log.info("Download and unzip index bundle from hdfs[{}] to local[{}] start", srcPath, destPath);
+    Set<String> processedPaths = Sets.newHashSet();
+    List<CountDownLatch> latches = Lists.newArrayList();
     File dstDir = new File(destPath);
     if (!dstDir.exists()) {
       log.info("Dest path not exists and create it {}", destPath);
       dstDir.mkdirs();
     }
-    List<String> paths = hdfsClient.listFiles(srcPath);
-    log.info("Download and unzip index bundle from hdfs[{}] to local[{}] start", srcPath, destPath);
-    CountDownLatch latch = new CountDownLatch(paths.size());
+    while (true) {
+      List<String> paths = hdfsClient.listCompletedFiles(srcPath);
+      paths.removeAll(processedPaths);
+      log.info("Got new path size : {} and processed path size:{}", paths.size(),
+          processedPaths.size());
+      if (paths.size() == 0) {
+        if (indexCompleted(indexName)) {
+          log.info("Index completed and all partition submitted");
+          break;
+        } else {
+          log.info("Wait index complete for 5s...");
+          try {
+            Thread.sleep(5000);
+          } catch (InterruptedException e) {
+            log.info("Wait index complete error", e);
+          }
+        }
+      } else {
+        CountDownLatch latch = new CountDownLatch(paths.size());
+        latches.add(latch);
+        paths.forEach(srcFile -> {
+          String fileName = srcFile.substring(srcFile.lastIndexOf('/') + 1);
+          String from = srcPath + '/' + fileName;
+          String to = destPath;
+          submitDownloadAndUnzipShardPartitionTask(from, to, latch);
+        });
 
-    paths.forEach(srcFile -> {
-      String fileName = srcFile.substring(srcFile.lastIndexOf('/') + 1);
-      String from = srcPath + '/' + fileName;
-      String to = destPath;
-      submitDownloadAndUnzipShardPartitionTask(from, to, latch);
-    });
-
+        processedPaths.addAll(paths);
+      }
+    }
     log.info("Wait all partition download and unzip");
     try {
-      latch.await();
+      for (CountDownLatch latch : latches) {
+        latch.await();
+      }
     } catch (InterruptedException e) {
       log.info("Wait all partition download and unzip error", e);
     }
-    log.info("Download and unzip index bundle from hdfs[{}] to local[{}] start", srcPath, destPath);
+    log.info("Download and unzip index bundle from hdfs[{}] to local[{}] end", srcPath, destPath);
   }
 
   private void submitDownloadAndUnzipShardPartitionTask(String srcPath, String destPath,
@@ -343,5 +372,13 @@ public class IndexBuilder {
     return "_" + Integer.toString(segmentInfos.counter++, Character.MAX_RADIX);
   }
 
+
+  public void markIndexCompleted(String indexName) {
+    completedIndices.put(indexName, true);
+  }
+
+  public boolean indexCompleted(String indexName) {
+    return completedIndices.getOrDefault(indexName, false);
+  }
 
 }

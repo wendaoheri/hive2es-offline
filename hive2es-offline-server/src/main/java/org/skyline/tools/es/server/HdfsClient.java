@@ -46,6 +46,22 @@ public class HdfsClient {
     return conf;
   }
 
+  public List<String> listCompletedFiles(String path) {
+    List<String> results = Lists.newArrayList();
+    try {
+      FileStatus[] fileStatuses = fs.listStatus(new Path(path));
+      fileStatuses = Lists.newArrayList(fileStatuses).stream().filter(x -> x.getLen() > 0)
+          .toArray(FileStatus[]::new);
+      Path[] children = FileUtil.stat2Paths(fileStatuses);
+      for (Path child : children) {
+        results.add(child.toString());
+      }
+    } catch (IOException e) {
+      log.error("List folder error", e);
+    }
+    return results;
+  }
+
   public List<String> listFiles(String path) {
     List<String> results = Lists.newArrayList();
     try {

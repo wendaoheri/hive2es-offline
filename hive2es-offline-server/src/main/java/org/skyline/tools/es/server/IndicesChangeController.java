@@ -69,6 +69,9 @@ public class IndicesChangeController implements PathChildrenCacheListener {
       case CHILD_ADDED:
         nodeService.buildIndex(path, data);
         break;
+      case CHILD_UPDATED:
+        nodeService.markIndexComplete(path,data);
+        break;
       default:
         break;
     }
