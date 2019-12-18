@@ -68,8 +68,8 @@ public class IndexBuilder {
     String indexName = configData.getString("indexName");
 
     Path localStateDir = Paths.get(Utils.mostFreeDir(workDirs), indexName);
-    if (downloadStateFile(hdfsWorkDir, indexName, localStateDir)) {
-      if (downloadAndMergeAllShards(idToShards, hdfsWorkDir, indexName, localStateDir)) {
+    if (downloadAndMergeAllShards(idToShards, hdfsWorkDir, indexName, localStateDir)) {
+      if (downloadStateFile(hdfsWorkDir, indexName, localStateDir)) {
         try {
           FileUtils.deleteDirectory(localStateDir.toFile());
           log.info("Delete state file {}", localStateDir.resolve(STATE_DIR));
