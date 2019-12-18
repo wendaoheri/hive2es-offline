@@ -11,7 +11,6 @@ import org.apache.commons.logging.LogFactory
 import org.apache.spark.TaskContext
 import org.apache.spark.sql.SparkSession
 import org.apache.spark.sql.types.MapType
-import org.apache.spark.storage.StorageLevel
 import org.json4s.DefaultFormats
 import org.json4s.jackson.Serialization.writePretty
 import org.skyline.tools.es.ArgsParser.{Config, argsParser}
@@ -85,37 +84,40 @@ object PAHive2ES {
       (r.getAs[String]("index_name").trim, r.getAs[String]("data_type").trim)
     }).toMap
 
-    val data = input.rdd.map(r => {
+    def dataTypeConvert(fieldName: String, dataType: String): String = {
+      dataTypeMapping.getOrElse(fieldName, dataType match {
+        case "bigint" => "long"
+        case "int" => "integer"
+        case x if (x.startsWith("decimal")) => "double"
+        case _ => dataType
+      })
+    }
+
+    def mapFieldName(fieldName: String, key: String): String = {
+      val esKey = if (fieldName.endsWith("_il")) {
+        fieldName + "-" + key
+      } else {
+        "" + key
+      }
+      esKey.toLowerCase().replaceAll("&", "-").replaceAll("\\$", "-")
+    }
+
+    val fields = input.rdd.flatMap(r => {
       r.schema.fields.flatMap(f => {
         f.dataType match {
           case x: MapType => {
             val mapValue = r.getAs[Map[String, Object]](f.name)
-            if (mapValue == null) {
-              Seq((null, (null, false, null)))
-            } else {
+            if (mapValue != null) {
               mapValue.keys.map(key => {
-                var esKey = if (f.name.endsWith("_il")) {
-                  f.name + "-" + key
-                } else {
-                  "" + key
-                }
-                esKey = esKey.toLowerCase().replaceAll("&", "-").replaceAll("\\$", "-")
-                (esKey, (x.valueType.simpleString, needIndex(f.name, esKey), covertDateFormat(x.valueType.simpleString, mapValue.get(key).get)))
+                val esKey = mapFieldName(f.name, key)
+                (esKey, (x.valueType.simpleString, false, f.name))
               })
-            }
+            } else Seq()
           }
-          case _ => Seq((f.name, (f.dataType.simpleString match {
-            case "bigint" => "long"
-            case "int" => "integer"
-            case x if (x.startsWith("decimal")) => "double"
-            case _ => f.dataType.simpleString
-          }, true, covertDateFormat(f.dataType.simpleString, r.getAs(f.name)))))
+          case _ => Seq((f.name, (f.dataType.simpleString, true, f.name)))
         }
       })
-    }).persist(StorageLevel.DISK_ONLY)
-
-
-    val fields = data.flatMap(_.toSeq).filter(_._1 != null).reduceByKey((x, _) => x).collect
+    }).filter(_._1 != null).distinct().collect()
 
     import scala.collection.JavaConverters._
 
@@ -123,20 +125,22 @@ object PAHive2ES {
     val indexFieldCount = new AtomicLong()
 
     val mapping = fields.toMap.map { case (esKey, x) => {
-      val index = if (!x._2) {
+      val indexField = x._2 || needIndex(x._3, esKey)
+      val dataType = dataTypeConvert(esKey, x._1)
+      val index = if (!indexField) {
         "no"
-      } else if (x._1.equalsIgnoreCase("string")) {
+      } else if (dataType.equalsIgnoreCase("string")) {
         indexFieldCount.incrementAndGet()
         "not_analyzed"
       } else {
         indexFieldCount.incrementAndGet()
         null
       }
-      var result = Map("type" -> dataTypeMapping.getOrElse(esKey, x._1))
+      var result = Map("type" -> dataType)
       if (index != null) {
         result += ("index" -> index)
       }
-      if (x._1.equalsIgnoreCase("date")) {
+      if (dataType.equalsIgnoreCase("date")) {
         result += ("format" -> "yyyyMMdd")
       }
       (esKey, result.asJava)
@@ -162,15 +166,31 @@ object PAHive2ES {
       }
     }
 
-    val docs = data.map(x => {
+    // RDD[Array[(esKey,(dataType,needIndex,value))]]
+    val data = input.rdd.map(r => {
       val doc = new JSONObject()
-      x.foreach(f => {
-        if (f._1 != null && notNullValue(f._2._3)) doc.put(f._1, f._2._3)
+      r.schema.fields.flatMap(f => {
+        f.dataType match {
+          case x: MapType => {
+            val mapValue = r.getAs[Map[String, Object]](f.name)
+            if (mapValue == null) {
+              Seq()
+            } else {
+              mapValue.keys.map(key => {
+                val esKey = mapFieldName(f.name, key)
+                (esKey, covertDateFormat(x.valueType.simpleString, mapValue.get(key).get))
+              })
+            }
+          }
+          case _ => Seq((f.name, covertDateFormat(f.dataType.simpleString, r.getAs(f.name))))
+        }
+      }).foreach(f => {
+        if (f._1 != null && notNullValue(f._2)) doc.put(f._1, f._2)
       })
       (doc.getString(config.id), doc)
     })
 
-    docs.foreachPartition(docsP => {
+    data.foreachPartition(docsP => {
       val partitionId = TaskContext.get.partitionId
 
       val esContainer = new ESContainer(config, partitionId)
