@@ -1,9 +1,5 @@
 package org.skyline.tools.es
 
-import org.json4s.DefaultFormats
-import org.json4s.jackson.Serialization.writePretty
-import org.skyline.tools.es.PAHive2ES.{log, run}
-
 object ArgsParser {
 
   case class Config(
@@ -25,7 +21,9 @@ object ArgsParser {
                      bulkSize: Int = 5,
                      hiveInputFields: Seq[String] = null,
                      indexESFields: Seq[String] = null,
-                     indexHiveFields: Seq[String] = null
+                     indexHiveFields: Seq[String] = null,
+                     zookeeper:String = null,
+                     chroot:String = "/es_offline"
                    )
 
   val argsParser = new scopt.OptionParser[Config]("hive2es offline") {
@@ -109,6 +107,14 @@ object ArgsParser {
       .valueName("<field_name1>,<field_name2>")
       .action((x, c) => c.copy(indexHiveFields = x))
       .text("Hive Field need index")
+
+    opt[String]("zookeeper").required()
+      .action((x, c) => c.copy(zookeeper = x))
+      .text("Zookeeper connect address")
+
+    opt[String]("chroot").required()
+      .action((x, c) => c.copy(chroot = x))
+      .text("Zookeeper chroot path")
   }
 
 }

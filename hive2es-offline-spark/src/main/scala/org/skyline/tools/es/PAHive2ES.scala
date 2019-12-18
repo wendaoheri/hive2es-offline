@@ -151,6 +151,9 @@ object PAHive2ES {
     val mappingString = new String(Files.readAllBytes(Paths.get("mapping.json")))
     Files.delete(Paths.get("mapping.json"))
 
+    val serverNotifier = new ServerNotifier(config)
+    serverNotifier.startIndex()
+
     def notNullValue(value: Object): Boolean = {
       if (value == null) {
         false
@@ -188,7 +191,7 @@ object PAHive2ES {
         esContainer.cleanUp()
       }
     })
-
+    serverNotifier.completeIndex()
   }
 
 }
