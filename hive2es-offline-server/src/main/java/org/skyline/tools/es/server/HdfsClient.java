@@ -3,6 +3,7 @@ package org.skyline.tools.es.server;
 import com.google.common.collect.Lists;
 import java.io.BufferedOutputStream;
 import java.io.File;
+import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.nio.file.Files;
@@ -56,6 +57,8 @@ public class HdfsClient {
       for (Path child : children) {
         results.add(child.toString());
       }
+    } catch (FileNotFoundException e) {
+      log.info("Folder path no exists : {}", path);
     } catch (IOException e) {
       log.error("List folder error", e);
     }
