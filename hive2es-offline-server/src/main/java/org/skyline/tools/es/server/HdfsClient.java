@@ -88,7 +88,7 @@ public class HdfsClient {
   }
 
   public void downloadAndUnzipFile(String srcPath, String dstPath) throws IOException {
-
+    log.info("Download from hdfs {} to local {}", srcPath, dstPath);
     try (
         ZipArchiveInputStream in = new ZipArchiveInputStream(
             fs.open(new Path(srcPath), 1024 * 1024))

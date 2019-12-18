@@ -278,6 +278,7 @@ class ESContainer(val config: Config, val partitionId: Int) {
       val zipFileName = s"p${partitionId}_$folderName.zip"
       val zipRootDir = if (p.endsWith("_state")) "_state" else s"p_$partitionId"
 
+      // TODO compress and upload can be in one stream without disk write
       log.info(s"zip index partition folder from $p to ${zipSource.resolve(zipFileName)} and zip rootDirName is $zipRootDir")
       CompressionUtils.zip(p, zipSource.resolve(zipFileName), zipRootDir)
       uploadToHdfs(zipSource.resolve(zipFileName), Paths.get(config.hdfsWorkDir, config.indexName, folderName, zipFileName))
