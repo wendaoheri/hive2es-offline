@@ -115,6 +115,15 @@ public class NodeService {
     }
   }
 
+  public void markIndexComplete(String indexPath, String data) {
+    JSONObject configData = JSON.parseObject(data);
+    boolean completed = configData.getString("state").equalsIgnoreCase("completed");
+    if (completed) {
+      String indexName = configData.getString("indexName");
+      indexBuilder.markIndexCompleted(indexName);
+    }
+  }
+
   private void waitAllNodeComplete(String indexPath) {
     int leftCount;
     while ((leftCount = registryCenter.getNumChildren(indexPath)) != 1) {
