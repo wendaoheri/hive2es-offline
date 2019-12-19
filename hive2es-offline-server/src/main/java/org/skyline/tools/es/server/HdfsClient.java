@@ -50,16 +50,16 @@ public class HdfsClient {
   public List<String> listCompletedFiles(String path) {
     List<String> results = Lists.newArrayList();
     try {
-      FileStatus[] fileStatuses = fs.listStatus(new Path(path));
-      fileStatuses = Lists.newArrayList(fileStatuses).stream()
-          .filter(x -> x.getLen() > 0 && !x.getPath().getName().endsWith("_tmp"))
-          .toArray(FileStatus[]::new);
-      Path[] children = FileUtil.stat2Paths(fileStatuses);
-      for (Path child : children) {
-        results.add(child.toString());
+      if (fs.exists(new Path(path))) {
+        FileStatus[] fileStatuses = fs.listStatus(new Path(path));
+        fileStatuses = Lists.newArrayList(fileStatuses).stream()
+            .filter(x -> x.getLen() > 0 && !x.getPath().getName().endsWith("_tmp"))
+            .toArray(FileStatus[]::new);
+        Path[] children = FileUtil.stat2Paths(fileStatuses);
+        for (Path child : children) {
+          results.add(child.toString());
+        }
       }
-    } catch (FileNotFoundException e) {
-      log.info("Folder path no exists : {}", path);
     } catch (IOException e) {
       log.error("List folder error", e);
     }

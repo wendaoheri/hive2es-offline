@@ -17,6 +17,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.Future;
 import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.compress.utils.Lists;
@@ -84,18 +86,30 @@ public class IndexBuilder {
   private boolean downloadAndMergeAllShards(Map<String, List<String>> idToShards,
       String hdfsWorkDir, String indexName, Path localStateDir) {
     Set<String> chosenPaths = Sets.newConcurrentHashSet();
-    idToShards.entrySet().parallelStream().forEach(entry -> {
+    int shardNum = idToShards.values().stream().mapToInt(x -> x.size()).sum();
+    CountDownLatch allShardsLatch = new CountDownLatch(shardNum);
+    idToShards.entrySet().forEach(entry -> {
       String nodeId = entry.getKey();
       List<String> shards = entry.getValue();
-      downloadAndMergeByNode(nodeId, shards, hdfsWorkDir, indexName, localStateDir, chosenPaths);
+      downloadAndMergeByNode(nodeId, shards, hdfsWorkDir, indexName, localStateDir, chosenPaths,
+          allShardsLatch);
     });
+    log.info("Wait all partition download and merge");
+    try {
+      allShardsLatch.await();
+    } catch (InterruptedException e) {
+      log.info("Wait all partition download and merge error", e);
+    }
     return true;
   }
 
-  private void downloadAndMergeByNode(String nodeId, List<String> shards, String hdfsWorkDir,
-      String indexName, Path localStateDir, Set<String> chosenPaths) {
+  private void downloadAndMergeByNode(String nodeId, List<String> shards,
+      String hdfsWorkDir,
+      String indexName, Path localStateDir, Set<String> chosenPaths,
+      CountDownLatch allShardsLatch) {
+    log.info("Submit download and merge index task for node [{}]", nodeId);
     String[] dataPaths = esClient.getDataPathByNodeId(nodeId);
-    shards.parallelStream().forEach(shardId -> {
+    shards.forEach(shardId -> processTaskExecutor.submit(() -> {
       // 选择最空闲的一个路径放索引
       String dataPath = Utils.mostFreeDir(dataPaths, chosenPaths);
       chosenPaths.add(dataPath);
@@ -120,6 +134,7 @@ public class IndexBuilder {
         log.error(
             "Build index bundle from hdfs[" + srcPath + "] failed", e);
       } finally {
+        allShardsLatch.countDown();
         try {
           log.info("Delete shard tmp dir {}", destPath);
           FileUtils.deleteDirectory(new File(destPath));
@@ -127,7 +142,7 @@ public class IndexBuilder {
           log.error("Delete shard tmp dir error", e);
         }
       }
-    });
+    }));
   }
 
   public void downloadAndUnzipShard(String srcPath, String destPath, String indexName) {
@@ -142,8 +157,6 @@ public class IndexBuilder {
     while (true) {
       List<String> paths = hdfsClient.listCompletedFiles(srcPath);
       paths.removeAll(processedPaths);
-      log.info("Got new path size : {} and processed path size:{}", paths.size(),
-          processedPaths.size());
       if (paths.size() == 0) {
         if (indexCompleted(indexName)) {
           log.info("Index completed and all partition submitted");
@@ -157,6 +170,8 @@ public class IndexBuilder {
           }
         }
       } else {
+        log.info("Got new path size : {} and processed path size:{}", paths.size(),
+            processedPaths.size());
         CountDownLatch latch = new CountDownLatch(paths.size());
         latches.add(latch);
         paths.forEach(srcFile -> {
@@ -169,13 +184,13 @@ public class IndexBuilder {
         processedPaths.addAll(paths);
       }
     }
-    log.info("Wait all partition download and unzip");
+    log.info("Wait shard partition download and unzip");
     try {
       for (CountDownLatch latch : latches) {
         latch.await();
       }
     } catch (InterruptedException e) {
-      log.info("Wait all partition download and unzip error", e);
+      log.info("Wait shard partition download and unzip error", e);
     }
     log.info("Download and unzip index bundle from hdfs[{}] to local[{}] end", srcPath, destPath);
   }
