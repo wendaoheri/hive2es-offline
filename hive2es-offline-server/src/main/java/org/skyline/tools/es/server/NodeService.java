@@ -20,6 +20,7 @@ import org.apache.commons.lang.ArrayUtils;
 import org.apache.commons.lang.StringUtils;
 import org.skyline.tools.es.server.utils.IpUtils;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Component;
 
 /**
@@ -85,6 +86,7 @@ public class NodeService {
   }
 
 
+  @Async("processTaskExecutor")
   public void buildIndex(String indexPath, String data) {
     String indexNodePath = indexPath + "/" + localNode.getNodeId();
     // 在开始build之前先各自更新一下当前节点上运行es data node数量，防止data node掉线
