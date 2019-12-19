@@ -29,9 +29,9 @@ public class CompressionUtils {
     java.nio.file.Path fromPath = Paths.get(from);
     Path toPath = new Path(to);
 
-    if (!fs.exists(new Path(toPath.getParent().toString()))) {
+    if (!fs.exists(toPath.getParent())) {
       log.info(String.format("hdfs path %s not exist and create it", toPath.getParent()));
-      fs.mkdirs(toPath);
+      fs.mkdirs(toPath.getParent());
     }
     Path tmpToPath = new Path(to + "_tmp");
 
