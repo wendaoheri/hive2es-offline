@@ -1,6 +1,6 @@
 package org.skyline.tools.es
 
-import java.io.IOException
+import java.io.{BufferedOutputStream, IOException}
 import java.nio.channels.{FileChannel, FileLock}
 import java.nio.file._
 import java.util.concurrent.TimeUnit
@@ -8,7 +8,8 @@ import java.util.concurrent.atomic.AtomicLong
 import java.util.stream.Collectors
 
 import com.alibaba.fastjson.JSONObject
-import org.apache.commons.io.FileUtils
+import org.apache.commons.compress.archivers.zip.{Zip64Mode, ZipArchiveEntry, ZipArchiveOutputStream}
+import org.apache.commons.io.{FileUtils, IOUtils}
 import org.apache.commons.lang3.StringUtils
 import org.apache.commons.logging.LogFactory
 import org.apache.hadoop.conf.Configuration
@@ -264,8 +265,9 @@ class ESContainer(val config: Config, val partitionId: Int) {
       val shardStateName = "_shard_state.zip"
       val shardStateDir = zipSource.resolve("0").resolve("_state")
       log.info(s"zip shard state from $shardStateDir to ${zipSource.resolve(shardStateName)}")
-      CompressionUtils.zip(shardStateDir, zipSource.resolve(shardStateName), "_shard_state")
-      uploadToHdfs(zipSource.resolve(shardStateName), Paths.get(config.hdfsWorkDir, config.indexName, shardStateName))
+      CompressionUtils.zipAndUpload(shardStateDir.toString,
+        Paths.get(config.hdfsWorkDir, config.indexName, shardStateName).toString,
+        "_shard_state", fs)
     }
 
     log.info(s"shard files : ${shardFiles.mkString(",")}")
@@ -280,8 +282,9 @@ class ESContainer(val config: Config, val partitionId: Int) {
 
       // TODO compress and upload can be in one stream without disk write
       log.info(s"zip index partition folder from $p to ${zipSource.resolve(zipFileName)} and zip rootDirName is $zipRootDir")
-      CompressionUtils.zip(p, zipSource.resolve(zipFileName), zipRootDir)
-      uploadToHdfs(zipSource.resolve(zipFileName), Paths.get(config.hdfsWorkDir, config.indexName, folderName, zipFileName))
+      CompressionUtils.zipAndUpload(p.toString,
+        Paths.get(config.hdfsWorkDir, config.indexName, folderName, zipFileName).toString,
+        zipRootDir, fs)
     }
     log.info("compress index file and upload to hdfs end")
   }

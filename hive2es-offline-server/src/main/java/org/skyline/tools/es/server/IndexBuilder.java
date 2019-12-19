@@ -189,7 +189,7 @@ public class IndexBuilder {
       try {
         hdfsClient.downloadAndUnzipFile(srcPath, destPath);
       } catch (IOException e) {
-        log.error("Download index file " + srcPath + "error", e);
+        log.error("Download index file " + srcPath + " error", e);
       } finally {
         latch.countDown();
         log.info("Download and unzip end with thread pool info : ");

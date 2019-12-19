@@ -51,7 +51,8 @@ public class HdfsClient {
     List<String> results = Lists.newArrayList();
     try {
       FileStatus[] fileStatuses = fs.listStatus(new Path(path));
-      fileStatuses = Lists.newArrayList(fileStatuses).stream().filter(x -> x.getLen() > 0)
+      fileStatuses = Lists.newArrayList(fileStatuses).stream()
+          .filter(x -> x.getLen() > 0 && !x.getPath().getName().endsWith("_tmp"))
           .toArray(FileStatus[]::new);
       Path[] children = FileUtil.stat2Paths(fileStatuses);
       for (Path child : children) {
