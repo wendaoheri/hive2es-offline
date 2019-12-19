@@ -25,7 +25,7 @@ public class CompressionUtils {
 
   public static void zipAndUpload(String from, String to, String rootDirName, FileSystem fs)
       throws IOException {
-
+    log.info("ZipAndUpload from [" + from  + "] to [" + to + "] rootDirName : [" + rootDirName + "]");
     java.nio.file.Path fromPath = Paths.get(from);
     Path toPath = new Path(to);
 

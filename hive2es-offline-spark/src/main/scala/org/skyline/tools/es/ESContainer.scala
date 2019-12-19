@@ -262,7 +262,6 @@ class ESContainer(val config: Config, val partitionId: Int) {
 
       val shardStateName = "_shard_state.zip"
       val shardStateDir = zipSource.resolve("0").resolve("_state")
-      log.info(s"zip shard state from $shardStateDir to ${zipSource.resolve(shardStateName)}")
       CompressionUtils.zipAndUpload(shardStateDir.toString,
         Paths.get(config.hdfsWorkDir, config.indexName, shardStateName).toString,
         "_shard_state", fs)
@@ -278,7 +277,6 @@ class ESContainer(val config: Config, val partitionId: Int) {
       val zipFileName = s"p${partitionId}_$folderName.zip"
       val zipRootDir = if (p.endsWith("_state")) "_state" else s"p_$partitionId"
 
-      log.info(s"zip index partition folder from $p to ${zipSource.resolve(zipFileName)} and zip rootDirName is $zipRootDir")
       CompressionUtils.zipAndUpload(p.toString,
         Paths.get(config.hdfsWorkDir, config.indexName, folderName, zipFileName).toString,
         zipRootDir, fs)
