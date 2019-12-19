@@ -1,6 +1,6 @@
 package org.skyline.tools.es
 
-import java.io.{BufferedOutputStream, IOException}
+import java.io.IOException
 import java.nio.channels.{FileChannel, FileLock}
 import java.nio.file._
 import java.util.concurrent.TimeUnit
@@ -8,9 +8,7 @@ import java.util.concurrent.atomic.AtomicLong
 import java.util.stream.Collectors
 
 import com.alibaba.fastjson.JSONObject
-import org.apache.commons.compress.archivers.zip.{Zip64Mode, ZipArchiveEntry, ZipArchiveOutputStream}
-import org.apache.commons.io.{FileUtils, IOUtils}
-import org.apache.commons.lang3.StringUtils
+import org.apache.commons.io.FileUtils
 import org.apache.commons.logging.LogFactory
 import org.apache.hadoop.conf.Configuration
 import org.apache.hadoop.fs.FileSystem
@@ -280,7 +278,6 @@ class ESContainer(val config: Config, val partitionId: Int) {
       val zipFileName = s"p${partitionId}_$folderName.zip"
       val zipRootDir = if (p.endsWith("_state")) "_state" else s"p_$partitionId"
 
-      // TODO compress and upload can be in one stream without disk write
       log.info(s"zip index partition folder from $p to ${zipSource.resolve(zipFileName)} and zip rootDirName is $zipRootDir")
       CompressionUtils.zipAndUpload(p.toString,
         Paths.get(config.hdfsWorkDir, config.indexName, folderName, zipFileName).toString,
