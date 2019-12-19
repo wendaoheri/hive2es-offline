@@ -20,7 +20,6 @@ import org.apache.commons.lang.ArrayUtils;
 import org.apache.commons.lang.StringUtils;
 import org.skyline.tools.es.server.utils.IpUtils;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Component;
 
 /**
@@ -86,35 +85,36 @@ public class NodeService {
   }
 
 
-  @Async("processTaskExecutor")
   public void buildIndex(String indexPath, String data) {
-    String indexNodePath = indexPath + "/" + localNode.getNodeId();
-    // 在开始build之前先各自更新一下当前节点上运行es data node数量，防止data node掉线
-    this.updateESNodeInfo();
-    JSONObject configData = JSON.parseObject(data);
-    if (leaderSelectorController.hasLeadership()) {
-      assignShards(configData, indexPath);
-      registryCenter.persistEphemeral(indexPath + "/" + ASSIGN_FLAG, "");
-    }
-    Map<String, List<String>> currentNodeShards = getCurrentNodeShards(indexPath, indexNodePath);
+    new Thread(() -> {
+      String indexNodePath = indexPath + "/" + localNode.getNodeId();
+      // 在开始build之前先各自更新一下当前节点上运行es data node数量，防止data node掉线
+      this.updateESNodeInfo();
+      JSONObject configData = JSON.parseObject(data);
+      if (leaderSelectorController.hasLeadership()) {
+        assignShards(configData, indexPath);
+        registryCenter.persistEphemeral(indexPath + "/" + ASSIGN_FLAG, "");
+      }
+      Map<String, List<String>> currentNodeShards = getCurrentNodeShards(indexPath, indexNodePath);
 
-    if (MapUtils.isNotEmpty(currentNodeShards)) {
-      log.info("Current node shards is : {}", currentNodeShards);
       if (MapUtils.isNotEmpty(currentNodeShards)) {
-        boolean success = indexBuilder.build(currentNodeShards, configData);
-        if (success) {
-          registryCenter.delete(indexNodePath);
-          log.info("Build index for {} complete", indexNodePath);
+        log.info("Current node shards is : {}", currentNodeShards);
+        if (MapUtils.isNotEmpty(currentNodeShards)) {
+          boolean success = indexBuilder.build(currentNodeShards, configData);
+          if (success) {
+            registryCenter.delete(indexNodePath);
+            log.info("Build index for {} complete", indexNodePath);
+          }
         }
       }
-    }
 
-    if (leaderSelectorController.hasLeadership()) {
-      waitAllNodeComplete(indexPath);
-      esClient.triggerClusterChange();
-      registryCenter.delete(indexPath);
-      log.info("Build index for {} all complete", indexPath);
-    }
+      if (leaderSelectorController.hasLeadership()) {
+        waitAllNodeComplete(indexPath);
+        esClient.triggerClusterChange();
+        registryCenter.delete(indexPath);
+        log.info("Build index for {} all complete", indexPath);
+      }
+    }).start();
   }
 
   public void markIndexComplete(String indexPath, String data) {
