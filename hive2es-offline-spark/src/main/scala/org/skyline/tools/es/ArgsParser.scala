@@ -19,11 +19,12 @@ object ArgsParser {
                      localDataDir: String = "/tmp/hive2es",
                      bulkActions: Int = 100,
                      bulkSize: Int = 5,
+                     bulkFlushInterval: Int = 5,
                      hiveInputFields: Seq[String] = null,
                      indexESFields: Seq[String] = null,
                      indexHiveFields: Seq[String] = null,
-                     zookeeper:String = null,
-                     chroot:String = "/es_offline"
+                     zookeeper: String = null,
+                     chroot: String = "/es_offline"
                    )
 
   val argsParser = new scopt.OptionParser[Config]("hive2es offline") {
@@ -92,6 +93,10 @@ object ArgsParser {
     opt[Int]("bulk-size")
       .action((x, c) => c.copy(bulkSize = x))
       .text("Size of bulk actions, unit M, default 5M")
+
+    opt[Int]("bulk-flush-interval")
+      .action((x, c) => c.copy(bulkFlushInterval = x))
+      .text("Interval of bulk flush, unit Second, default 5s")
 
     opt[Seq[String]]("hive-input-fields")
       .valueName("<field_name1>,<field_name2>")
