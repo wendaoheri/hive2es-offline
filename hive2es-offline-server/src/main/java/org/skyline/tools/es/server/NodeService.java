@@ -111,6 +111,16 @@ public class NodeService {
       if (leaderSelectorController.hasLeadership()) {
         waitAllNodeComplete(indexPath);
         esClient.triggerClusterChange();
+        String finalIndexSetting = configData.getString("finalIndexSetting");
+        String indexName = configData.getString("indexName");
+        if (StringUtils.isNotEmpty(finalIndexSetting)) {
+          try {
+            log.info("Update final index setting : {}", finalIndexSetting);
+            esClient.updateIndexSetting(indexName, finalIndexSetting);
+          } catch (Exception e) {
+            log.error("Update final index setting failed", e);
+          }
+        }
         registryCenter.delete(indexPath);
         log.info("Build index for {} all complete", indexPath);
       }

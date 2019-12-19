@@ -13,6 +13,7 @@ object ArgsParser {
                      typeName: String = null,
                      alias: String = null,
                      mapping: String = null,
+                     finalIndexSetting: String = null,
                      id: String = null,
                      routing: String = null,
                      hdfsWorkDir: String = "/tmp/hive2es",
@@ -69,6 +70,10 @@ object ArgsParser {
     opt[String]("mapping")
       .action((x, c) => c.copy(mapping = x))
       .text("ES index mapping, json format")
+
+    opt[String]("final-index-setting")
+      .action((x, c) => c.copy(finalIndexSetting = x))
+      .text("Final es index setting, will be set after index loaded")
 
     opt[String]("id")
       .action((x, c) => c.copy(id = x))
