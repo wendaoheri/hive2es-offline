@@ -134,7 +134,7 @@ class ESContainer(val config: Config, val partitionId: Int) {
     }
   }).setBulkActions(config.bulkActions)
     .setBulkSize(new ByteSizeValue(config.bulkSize, ByteSizeUnit.MB))
-    .setFlushInterval(TimeValue.timeValueSeconds(5))
+    .setFlushInterval(TimeValue.timeValueSeconds(config.bulkFlushInterval))
     .setConcurrentRequests(1)
     .setBackoffPolicy(BackoffPolicy.exponentialBackoff(TimeValue.timeValueSeconds(100), 3))
     .build()
