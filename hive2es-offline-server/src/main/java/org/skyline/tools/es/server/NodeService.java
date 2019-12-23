@@ -72,6 +72,7 @@ public class NodeService {
 
   @PreDestroy
   public void close() throws IOException {
+    log.info("Close node {}",this.localNode);
     registryCenter.close();
     leaderSelectorController.close();
     indicesChangeController.close();
@@ -110,9 +111,10 @@ public class NodeService {
 
       if (leaderSelectorController.hasLeadership()) {
         waitAllNodeComplete(indexPath);
-        esClient.triggerClusterChange();
         String finalIndexSetting = configData.getString("finalIndexSetting");
         String indexName = configData.getString("indexName");
+        log.info("Trigger cluster state change for index {}", indexName);
+        esClient.triggerClusterChange();
         if (StringUtils.isNotEmpty(finalIndexSetting)) {
           try {
             log.info("Update final index setting : {}", finalIndexSetting);
