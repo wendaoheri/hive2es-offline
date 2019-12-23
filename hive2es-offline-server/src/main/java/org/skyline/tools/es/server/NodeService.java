@@ -72,6 +72,7 @@ public class NodeService {
 
   @PreDestroy
   public void close() throws IOException {
+    log.info("Close node {}",this.localNode);
     registryCenter.close();
     leaderSelectorController.close();
     indicesChangeController.close();
