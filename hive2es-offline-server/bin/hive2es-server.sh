@@ -109,7 +109,7 @@ stop() {
 
    if [ $psid -ne 0 ]; then
       echo -n "Stopping $APP_MAINCLASS ...(pid=$psid) "
-      sh -c "kill -9 $psid"
+      sh -c "kill $psid"
       if [ $? -eq 0 ]; then
          echo "[OK]"
       else
