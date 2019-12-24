@@ -73,16 +73,21 @@ object PAHive2ES {
       }
     }
 
-    val dataTypeMapping = spark.sql(
+    val dataTypeMappingSql =
       s"""
          |select
          |  index_name,data_type
          |from
          |  raw.I_DSPDATA_USERINDEX_INDEXFIELD
          |where dt = $dt and lower(theme) = lower("$alias")
-       """.stripMargin).collect().map(r => {
+       """.stripMargin
+
+    val dataTypeMapping = spark.sql(dataTypeMappingSql).collect().map(r => {
       (r.getAs[String]("index_name").trim, r.getAs[String]("data_type").trim)
     }).toMap
+
+    log.info(dataTypeMappingSql)
+    log.info(dataTypeMapping)
 
     def dataTypeConvert(fieldName: String, dataType: String): String = {
       dataTypeMapping.getOrElse(fieldName, dataType match {
