@@ -78,7 +78,7 @@ public class NodeService {
     registryCenter.close();
   }
 
-  private void registerNode() {
+  public void registerNode() {
     log.info("Register node {} on path {}", localNode.getNodeId(),
         registryCenter.getFullPath(localNode.getZKPath()));
     registryCenter.persistEphemeral(localNode.getZKPath(), "");

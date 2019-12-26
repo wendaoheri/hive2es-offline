@@ -54,6 +54,7 @@ public class LeaderSelectorController extends LeaderSelectorListenerAdapter {
       this.close();
     } else if (newState == ConnectionState.RECONNECTED) {
       this.start();
+      nodeService.registerNode();
     }
     super.stateChanged(client, newState);
   }
