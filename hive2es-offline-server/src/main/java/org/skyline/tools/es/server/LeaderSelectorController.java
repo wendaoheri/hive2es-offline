@@ -52,6 +52,8 @@ public class LeaderSelectorController extends LeaderSelectorListenerAdapter {
   public void stateChanged(CuratorFramework client, ConnectionState newState) {
     if (client.getConnectionStateErrorPolicy().isErrorState(newState)) {
       this.close();
+    } else if (newState == ConnectionState.RECONNECTED) {
+      this.start();
     }
     super.stateChanged(client, newState);
   }
@@ -66,9 +68,9 @@ public class LeaderSelectorController extends LeaderSelectorListenerAdapter {
   }
 
   public void close() {
-    log.info("Leader selector closed and clean leader id : {}",
-        nodeService.getLocalNode().getNodeId());
+    log.info("Stop leader election");
     if (hasLeadership()) {
+      log.info("Clean leader id : {}", nodeService.getLocalNode().getNodeId());
       registryCenter.update(LEADER_PATH, "");
     }
     leaderSelector.close();
