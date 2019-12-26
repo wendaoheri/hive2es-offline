@@ -15,6 +15,7 @@ import org.json4s.DefaultFormats
 import org.json4s.jackson.Serialization.writePretty
 import org.skyline.tools.es.ArgsParser.{Config, argsParser}
 
+
 object PAHive2ES {
 
 
@@ -65,14 +66,6 @@ object PAHive2ES {
     }
 
 
-    def covertDateFormat(dataType: String, value: Object): Object = {
-      if (value != null && dataType.equalsIgnoreCase("date")) {
-        DateFormatUtils.format(value.asInstanceOf[Date], "yyyyMMdd")
-      } else {
-        value
-      }
-    }
-
     val dataTypeMappingSql =
       s"""
          |select
@@ -90,7 +83,7 @@ object PAHive2ES {
     log.info(dataTypeMapping)
 
     def dataTypeConvert(fieldName: String, dataType: String): String = {
-      dataTypeMapping.getOrElse(fieldName, dataType match {
+      dataTypeMapping.getOrElse(fieldName, dataType.toLowerCase match {
         case "bigint" => "long"
         case "int" => "integer"
         case x if (x.startsWith("decimal")) => "double"
@@ -104,7 +97,7 @@ object PAHive2ES {
       } else {
         "" + key
       }
-      esKey.toLowerCase().replaceAll("&", "-").replaceAll("\\$", "-")
+      esKey.replaceAll("&", "-").replaceAll("\\$", "-")
     }
 
     val fields = input.rdd.flatMap(r => {
@@ -176,8 +169,35 @@ object PAHive2ES {
       }
     }
 
+    def getFinalValue(fieldName: String, dataType: String, value: Object): Object = {
+      if (dataType.contains("[")) { // Array
+        JSON.parseArray(value.asInstanceOf[String])
+      } else if (value != null && dataType.equalsIgnoreCase("date")) { // date
+        DateFormatUtils.format(value.asInstanceOf[Date], "yyyyMMdd")
+      } else if (null != value && dataTypeMapping.contains(fieldName)) { // manually assign
+        val finalDataType = mappingObj.getJSONObject(fieldName).getString("type")
+        finalDataType match {
+          case "long" => java.lang.Long.valueOf(value.toString)
+          case "integer" => if (value.isInstanceOf[java.lang.Double]) {
+            value.asInstanceOf[java.lang.Double].intValue().asInstanceOf[java.lang.Integer]
+          } else {
+            value.asInstanceOf[java.lang.Integer]
+          }
+          case "double" => java.lang.Double.valueOf(value.toString)
+          case "string" => value.toString
+          case _ => value
+        }
+      } else if (null != value && dataType.startsWith("decimal")) {  // decimal
+        value.asInstanceOf[java.math.BigDecimal].doubleValue().asInstanceOf[java.lang.Double]
+      } else { // use default
+        value
+      }
+
+    }
+
     // RDD[Array[(esKey,(dataType,needIndex,value))]]
     val data = input.rdd.map(r => {
+
       val doc = new JSONObject()
       r.schema.fields.flatMap(f => {
         f.dataType match {
@@ -188,11 +208,11 @@ object PAHive2ES {
             } else {
               mapValue.keys.map(key => {
                 val esKey = mapFieldName(f.name, key)
-                (esKey, covertDateFormat(x.valueType.simpleString, mapValue.get(key).get))
+                (esKey, getFinalValue(esKey, x.valueType.simpleString, mapValue.get(key).get))
               })
             }
           }
-          case _ => Seq((f.name, covertDateFormat(f.dataType.simpleString, r.getAs(f.name))))
+          case _ => Seq((f.name, getFinalValue(f.name, f.dataType.simpleString, r.getAs(f.name))))
         }
       }).foreach(f => {
         if (f._1 != null && notNullValue(f._2)) doc.put(f._1, f._2)
