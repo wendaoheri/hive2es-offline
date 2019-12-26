@@ -127,8 +127,8 @@ public class IndexBuilder {
 
         downloadStateFile(hdfsWorkDir, indexName, localStateDir);
 
-        String finalIndexPath = mergeIndex(destPath);
         log.info("Merge index bundle in dir[{}] ", destPath);
+        String finalIndexPath = mergeIndex(destPath);
         moveShardFileToESDataDir(indexName, localStateDir, shardId, dataPath, finalIndexPath);
       } catch (IOException e) {
         log.error(
@@ -213,7 +213,7 @@ public class IndexBuilder {
     });
   }
 
-  private void moveShardFileToESDataDir(String indexName, Path localStateDir, String shardId,
+  private synchronized void moveShardFileToESDataDir(String indexName, Path localStateDir, String shardId,
       String dataPath, String finalIndexPath) throws IOException {
     // 从临时目录把索引移到es的data下面
     Path from = Paths.get(finalIndexPath);
