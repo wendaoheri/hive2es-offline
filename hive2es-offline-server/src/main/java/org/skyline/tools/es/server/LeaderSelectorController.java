@@ -68,7 +68,9 @@ public class LeaderSelectorController extends LeaderSelectorListenerAdapter {
   public void close() {
     log.info("Leader selector closed and clean leader id : {}",
         nodeService.getLocalNode().getNodeId());
-    registryCenter.update(LEADER_PATH, "");
+    if (hasLeadership()) {
+      registryCenter.update(LEADER_PATH, "");
+    }
     leaderSelector.close();
   }
 }
