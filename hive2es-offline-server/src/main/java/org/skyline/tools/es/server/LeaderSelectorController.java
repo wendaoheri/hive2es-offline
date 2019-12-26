@@ -53,6 +53,7 @@ public class LeaderSelectorController extends LeaderSelectorListenerAdapter {
     if (client.getConnectionStateErrorPolicy().isErrorState(newState)) {
       this.close();
     } else if (newState == ConnectionState.RECONNECTED) {
+      log.info("Reconnect to zookeeper cluster, restart leader election and register node");
       this.start();
       nodeService.registerNode();
     }
