@@ -94,7 +94,7 @@ public class NodeService {
       JSONObject configData = JSON.parseObject(data);
       if (leaderSelectorController.hasLeadership()) {
         assignShards(configData, indexPath);
-        registryCenter.persistEphemeral(indexPath + "/" + ASSIGN_FLAG, "");
+        registryCenter.persist(indexPath + "/" + ASSIGN_FLAG, "");
       }
       Map<String, List<String>> currentNodeShards = getCurrentNodeShards(indexPath, indexNodePath);
 
@@ -204,7 +204,7 @@ public class NodeService {
       }
       if (MapUtils.isNotEmpty(idToShards)) {
         String idToShardsJSON = JSON.toJSONString(idToShards);
-        registryCenter.persistEphemeral(indexPath + "/" + nodeId, idToShardsJSON);
+        registryCenter.persist(indexPath + "/" + nodeId, idToShardsJSON);
         log.info("Assign shards {} to host [{}]", idToShardsJSON, nodeId);
       }
     });
