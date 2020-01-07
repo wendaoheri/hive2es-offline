@@ -97,7 +97,7 @@ object PAHive2ES {
       } else {
         "" + key
       }
-      esKey.replaceAll("&", "-").replaceAll("\\$", "-")
+      esKey.toLowerCase().replaceAll("&", "-").replaceAll("\\$", "-")
     }
 
     val fields = input.rdd.flatMap(r => {
