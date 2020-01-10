@@ -18,5 +18,5 @@ threadpools:
     corePoolSize: 8
     maxPoolSize: 8
   download:
-    corePoolSize: 24
-    maxPoolSize: 24
+    corePoolSize: 12
+    maxPoolSize: 12
