@@ -156,7 +156,7 @@ object PAHive2ES {
     log.info(mappingString)
 
     val serverNotifier = new ServerNotifier(config)
-    serverNotifier.startIndex()
+//    serverNotifier.startIndex()
 
     def notNullValue(value: Object): Boolean = {
       if (value == null) {
@@ -238,7 +238,7 @@ object PAHive2ES {
         esContainer.cleanUp()
       }
     })
-    serverNotifier.completeIndex()
+//    serverNotifier.completeIndex()
   }
 
 }
