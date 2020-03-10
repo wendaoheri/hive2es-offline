@@ -45,7 +45,7 @@ object PAHive2ES {
 
     val sc = spark.sparkContext
     val whereClause = Some(config.where).getOrElse("1 = 1")
-    val input = spark.read.table(config.hiveTable).where(whereClause).limit(200000)
+    val input = spark.read.table(config.hiveTable).where(whereClause)
 
     val numPartitions = config.numShards * config.partitionMultiples
     val partitionKey = Option(config.routing).getOrElse(config.id)
