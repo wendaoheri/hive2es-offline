@@ -44,8 +44,13 @@ public class ESClient {
     private TransportClient client;
 
     //change1 start: date 20200323, only add method
-    public boolean createIndexFirst(String indexName) {
-        CreateIndexRequestBuilder createIndexRequestBuilder = client.admin().indices().prepareCreate(indexName);
+    public boolean createIndexFirst(String indexName,int replicasNum,int shardNum) {
+        Settings settings = Settings.builder()
+                .put("number_of_replicas", replicasNum)
+                .put("number_of_shards", shardNum).build();
+        CreateIndexRequestBuilder createIndexRequestBuilder = client.admin().indices()
+                .prepareCreate(indexName)
+                .setSettings(settings);
         CreateIndexResponse createIndexResponse = createIndexRequestBuilder.get();
         boolean acknowledged = createIndexResponse.isAcknowledged();
         log.info("index created " + indexName + " acknowledged is " + acknowledged);
@@ -152,7 +157,6 @@ public class ESClient {
             while (it.hasNext()) {
                 result.add(it.next().getPath());
             }
-
         }
         return result.toArray(new String[result.size()]);
     }

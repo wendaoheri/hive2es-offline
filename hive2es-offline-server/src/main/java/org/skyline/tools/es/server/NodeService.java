@@ -172,7 +172,8 @@ public class NodeService {
     private void assignShards(JSONObject configData, String indexPath) {
         log.info("Start assign shard");
         String indexName = configData.getString("indexName");
-        esClient.createIndexFirst(indexName);
+        int numShards = configData.getInteger("numShards");
+        esClient.createIndexFirst(indexName,numShards,0);
 
         Map<String, String[]> allNodes = this.getAllRegisteredNode();
         List<String> serverAliveIds = allNodes.values().stream()
