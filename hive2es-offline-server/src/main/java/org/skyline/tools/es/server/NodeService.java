@@ -180,11 +180,12 @@ public class NodeService {
 
     private void assignShards(JSONObject configData, String indexPath) {
         log.info("Start assign shard");
-        log.info("version 2");
-        String indexName = configData.getString("indexName");
-        int numShards = configData.getInteger("numShards");
-        log.info(indexName+":"+numShards);
-        esClient.createIndexFirst(indexName,0,numShards);
+        log.info("version 3");
+//        String indexName = configData.getString("indexName");
+//        int numShards = configData.getInteger("numShards");
+//        log.info(indexName+":"+numShards);
+        String indexName = "custom_test_20191215";
+        esClient.createIndexFirst(indexName,0,36);
         log.info("create index finished: "+indexName);
 
         Map<String, String[]> allNodes = this.getAllRegisteredNode();
