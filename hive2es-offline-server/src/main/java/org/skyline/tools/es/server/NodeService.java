@@ -180,6 +180,7 @@ public class NodeService {
 
     private void assignShards(JSONObject configData, String indexPath) {
         log.info("Start assign shard");
+        log.info("version 1");
         String indexName = configData.getString("indexName");
         int numShards = configData.getInteger("numShards");
         esClient.createIndexFirst(indexName,numShards,0);
