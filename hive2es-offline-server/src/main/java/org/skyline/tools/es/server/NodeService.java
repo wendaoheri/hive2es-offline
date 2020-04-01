@@ -183,7 +183,7 @@ public class NodeService {
         log.info("version 1");
         String indexName = configData.getString("indexName");
         int numShards = configData.getInteger("numShards");
-        esClient.createIndexFirst(indexName,numShards,0);
+        esClient.createIndexFirst(indexName,0,numShards);
         log.info("create index finished: "+indexName);
 
         Map<String, String[]> allNodes = this.getAllRegisteredNode();
