@@ -119,8 +119,7 @@ public class IndexBuilder {
                                         String indexName, Path localStateDir, Set<String> chosenPaths,
                                         CountDownLatch allShardsLatch) {
         log.info("Submit download and merge index task for node [{}]", nodeId);
-        
-        String[] dataPaths = esClient.getDataPathByNodeId(nodeId);
+
         shards.forEach(shardId -> processTaskExecutor.submit(() -> {
 
             String dataPath = esClient.getShardDataPath(indexName, Integer.getInteger(shardId));

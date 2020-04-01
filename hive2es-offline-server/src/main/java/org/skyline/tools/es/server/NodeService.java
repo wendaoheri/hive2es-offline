@@ -188,6 +188,7 @@ public class NodeService {
         //only solve server node down but es node is alive
         //when es node down but server node alive is ok
         Map<Integer, String> nodesShards = esClient.getNodesShards(indexName);
+        log.info("es cluster first asssion shard distribution: "+nodesShards);
         for (Map.Entry<Integer, String> node2ShardsInEsCluster : nodesShards.entrySet()) {
             Integer sharId = node2ShardsInEsCluster.getKey();
             String clusterNodeId = node2ShardsInEsCluster.getValue();
@@ -198,6 +199,7 @@ public class NodeService {
                 relocationShards.put(sharId, clusterNodeId);
             }
         }
+        log.info("can't assign shard list: "+relocationShards);
         for (Map.Entry<Integer, String> relocationShard : relocationShards.entrySet()) {
             Integer shardId = relocationShard.getKey();
             String oldNodeId = relocationShard.getValue();
@@ -215,7 +217,7 @@ public class NodeService {
                 }
             }
         }
-        log.info("ES cluster node and shard route is : {}", ids);
+        log.info("ES cluster final node and shard route is : {}", ids);
 
         allNodes.entrySet().forEach(x -> {
             //the final shard loaction
