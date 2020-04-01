@@ -5,18 +5,15 @@ import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
 
 import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
@@ -30,6 +27,8 @@ import org.apache.lucene.index.SegmentInfo;
 import org.apache.lucene.index.SegmentInfos;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.FSDirectory;
+import org.elasticsearch.common.Strings;
+import org.elasticsearch.index.translog.Translog;
 import org.skyline.tools.es.server.config.ThreadPoolConfig.VisibleThreadPoolTaskExecutor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
@@ -65,6 +64,16 @@ public class IndexBuilder {
     private static final String SHARD_STATE = "_shard_state";
 
     private Map<String, Boolean> completedIndices = Maps.newConcurrentMap();
+
+    private String INDEX_FILE = "index";
+
+    private String TLOG_UUID = "";
+
+    private String TRANSLOG_PATH = "translog";
+
+    private String TRANSLOG_TLOG_FILE = "translog-1.tolg";
+
+    private String TRANSLOG_GENERATION_KEY = "1";
 
     public boolean build(Map<String, List<String>> idToShards, JSONObject configData) {
 
@@ -110,8 +119,7 @@ public class IndexBuilder {
                                         String indexName, Path localStateDir, Set<String> chosenPaths,
                                         CountDownLatch allShardsLatch) {
         log.info("Submit download and merge index task for node [{}]", nodeId);
-
-
+        
         String[] dataPaths = esClient.getDataPathByNodeId(nodeId);
         shards.forEach(shardId -> processTaskExecutor.submit(() -> {
 
@@ -134,7 +142,7 @@ public class IndexBuilder {
 
                 log.info("Merge index bundle in dir[{}] ", destPath);
                 String finalIndexPath = mergeIndex(destPath);
-                moveShardFileToESDataDir(indexName, localStateDir, shardId, dataPath, finalIndexPath);
+                moveLuceneToESDataDir(indexName, shardId, dataPath, finalIndexPath);
             } catch (IOException e) {
                 log.error(
                         "Build index bundle from hdfs[" + srcPath + "] failed", e);
@@ -218,11 +226,13 @@ public class IndexBuilder {
         });
     }
 
-    private synchronized void moveShardFileToESDataDir(String indexName, Path localStateDir, String shardId,
+    //改成之移动lucene文件,并更改lucene的user data
+    private synchronized void moveLuceneToESDataDir(String indexName, String shardId,
                                                        String dataPath, String finalIndexPath) throws IOException {
-        // 从临时目录把索引移到es的data下面
-        Path from = Paths.get(finalIndexPath);
-        Path to = Paths.get(dataPath, "indices", indexName, shardId);
+        // 从临时目录把lucene文件移到es的分片索引目录下面
+        //shard中，0/index 这一级移到目录下，名字不用改
+        Path from = Paths.get(finalIndexPath+INDEX_FILE);
+        Path to = Paths.get(dataPath, "indices", indexName, shardId,INDEX_FILE);
 
         if (!Files.exists(to.getParent())) {
             log.info("Create index folder : {}", to.getParent());
@@ -231,28 +241,58 @@ public class IndexBuilder {
 
         log.info("Move index from {} to {}", from, to);
         Files.move(from, to);
-        log.info("Delete old shard _state file {}", to.resolve(STATE_DIR));
-        FileUtils.deleteDirectory(to.resolve(STATE_DIR).toFile());
-        log.info("Copy new shard _state file from {} to {}", localStateDir.resolve(SHARD_STATE),
-                to.resolve(STATE_DIR));
-        FileUtils.copyDirectory(localStateDir.resolve(SHARD_STATE).toFile(),
-                to.resolve(STATE_DIR).toFile());
 
-        if (Files.list(to.getParent()).filter(p -> p.toString().endsWith(STATE_DIR)).count()
-                == 0L) {
-            FileUtils.copyDirectory(localStateDir.resolve(STATE_DIR).toFile(),
-                    to.getParent().resolve(STATE_DIR).toFile());
-            Utils.setPermissionRecursive(to.getParent().resolve(STATE_DIR));
-            Utils.setPermissions(to.getParent());
-            log.info("Copy state file from {} to {}", localStateDir.resolve(STATE_DIR),
-                    to.getParent().resolve(STATE_DIR));
-        } else {
-            log.info("State file exists");
+        //更改segmentsInfo信息
+        //TODO:once get null from tlog file, get the es version ,and then --
+        //TODO: --use Strings.randomBase64UUID() create .tlog and .ckp file
+        if (getSegInfo(to.getParent().resolve(TRANSLOG_PATH).resolve(TRANSLOG_TLOG_FILE).toString())){
+            //set to lucene
+            setToLucene(to);
         }
-
         Utils.setPermissionRecursive(to);
     }
 
+    private boolean getSegInfo(String tlog){
+        //TODO: ensure no flush
+        //appcom/es/data/uat-es/nodes/0/indices/lead/0/translog/translog-1.tlog
+        File file = new File(tlog);
+        FileInputStream fileInputStream = null;
+        try {
+            //read UUID from translog-1.tlg:
+            fileInputStream = new FileInputStream(file);
+            byte[] bytes = new byte[1024];
+            while(fileInputStream.read(bytes) != -1){
+                TLOG_UUID = new String(bytes,20,43).trim();
+            }
+            log.info("get tlog file: "+tlog+" uuid: "+TLOG_UUID);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return true;
+    }
+
+    private void setToLucene(Path segPath){
+        try {
+            FSDirectory directory = FSDirectory.open(segPath);
+            SegmentInfos segmentInfos = SegmentInfos.readLatestCommit(directory);
+            Map<String, String> commitData = new HashMap<>(2);
+            commitData.put(Translog.TRANSLOG_GENERATION_KEY, TRANSLOG_GENERATION_KEY);
+            commitData.put(Translog.TRANSLOG_UUID_KEY, TLOG_UUID);
+
+            Method setUserData = segmentInfos.getClass().getDeclaredMethod("setUserData", Map.class);
+            setUserData.setAccessible(true);
+            setUserData.invoke(segmentInfos, commitData);
+
+            Method commit = segmentInfos.getClass().getDeclaredMethod("commit", Directory.class);
+            commit.setAccessible(true);
+            commit.invoke(segmentInfos, directory);
+
+            log.info("set userData: "+segmentInfos.getUserData());
+        }catch (Exception e){
+            e.printStackTrace();
+        }
+
+    }
 
     private synchronized boolean downloadStateFile(String hdfsWorkDir, String indexName,
                                                    Path localStateDir) {

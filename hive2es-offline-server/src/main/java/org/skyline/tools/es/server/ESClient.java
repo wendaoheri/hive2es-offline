@@ -162,9 +162,10 @@ public class ESClient {
     }
 
 
-    public void triggerClusterChange() {
-        client.admin().cluster().prepareUpdateSettings()
-                .setTransientSettings(Settings.builder().put("logger._root", "INFO").build()).get();
+    public void triggerClusterChange(String indexName) {
+        //TODO:Maybe should try a more elegant way to trigger
+        client.admin().indices().prepareClose(indexName);
+        client.admin().indices().prepareOpen(indexName);
     }
 
     public boolean indexExists(String indexName) {
@@ -188,7 +189,6 @@ public class ESClient {
         } else {
             return false;
         }
-
     }
 
     /**

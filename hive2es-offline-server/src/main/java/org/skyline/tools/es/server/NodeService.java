@@ -113,7 +113,7 @@ public class NodeService {
                 String finalIndexSetting = configData.getString("finalIndexSetting");
                 String indexName = configData.getString("indexName");
                 log.info("Trigger cluster state change for index {}", indexName);
-                esClient.triggerClusterChange();
+                esClient.triggerClusterChange(indexName);
                 if (StringUtils.isNotEmpty(finalIndexSetting)) {
                     try {
                         log.info("Update final index setting : {}", finalIndexSetting);
@@ -238,7 +238,7 @@ public class NodeService {
             if (MapUtils.isNotEmpty(idToShards)) {
                 String idToShardsJSON = JSON.toJSONString(idToShards);
                 registryCenter.persist(indexPath + "/" + nodeId, idToShardsJSON);
-                log.info("Assign shards {} to host [{}]", idToShardsJSON, nodeId);
+                log.info("es cluster asssion shards {} to host [{}]", idToShardsJSON, nodeId);
             }
         });
         log.info("End assign shard");
