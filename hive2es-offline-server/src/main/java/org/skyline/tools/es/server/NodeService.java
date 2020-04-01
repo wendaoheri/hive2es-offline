@@ -91,6 +91,15 @@ public class NodeService {
             // 在开始build之前先各自更新一下当前节点上运行es data node数量，防止data node掉线
             this.updateESNodeInfo();
             JSONObject configData = JSON.parseObject(data);
+
+            try {
+                String serverLeaderNode = leaderSelectorController.getServerLeaderNode();
+                log.info(serverLeaderNode);
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+
+
             if (leaderSelectorController.hasLeadership()) {
                 assignShards(configData, indexPath);
                 registryCenter.persist(indexPath + "/" + ASSIGN_FLAG, "");
