@@ -188,11 +188,15 @@ public class NodeService {
         esClient.createIndexFirst(indexName,0,36);
         log.info("create index finished: "+indexName);
 
+
+//        stsz030282 : [SOnMwP-vRlKiOqiNA_1p1w, Tbj6H9K0Q_SqgQMTW8CrKA]
         Map<String, String[]> allNodes = this.getAllRegisteredNode();
+
         List<String> serverAliveIds = allNodes.values().stream()
                 .flatMap(x -> Lists.newArrayList(x).stream())
                 .filter(x -> StringUtils.isNotEmpty(x))
                 .collect(Collectors.toList());
+
         log.info("Server alive node id sequence is : {}", serverAliveIds);
 
         List<String> ids = new ArrayList<>();
@@ -231,23 +235,31 @@ public class NodeService {
             }
         }
         log.info("ES cluster final node and shard route is : {}", ids);
-
+        log.info("Node to ES node is : {}",allNodes);
+        //一台机器写一次ZK， 格式：{esclustNodeId1:[shardid1,shardid2],esclustNodeId2:[shardid1,shardid2]},hostid
+        //x:stsz030282-[SOnMwP-vRlKiOqiNA_1p1w, Tbj6H9K0Q_SqgQMTW8CrKA]
+        //注意keyName
         allNodes.entrySet().forEach(x -> {
             //the final shard loaction
             Map<Integer, String> newNodesShards = esClient.getNodesShards(indexName);
-
+            //nodeid:stsz030282
             String nodeId = x.getKey();
+            //用来装：clusterNodeID-shardIdList
             Map<String, List<Integer>> idToShards = Maps.newHashMap();
 
+            List<String> clustNodeIdList = Arrays.asList(x.getValue());
+
+            //找出每个nodeId对应的esclusterNodeId-shardIdList
             for (Map.Entry<Integer, String> shardNode : newNodesShards.entrySet()) {
-                Integer shardId = shardNode.getKey();
                 String clusternodeId = shardNode.getValue();
-                if (idToShards.containsKey(clusternodeId)){
+                //这台机器上的节点
+                if (clustNodeIdList.contains(clusternodeId)){
                     List<Integer> shards = idToShards.get(clusternodeId);
-                    if (shards==null){
+                    if (shards == null){
                         shards = new ArrayList<>();
+                        idToShards.put(clusternodeId,shards);
                     }
-                    shards.add(shardId);
+                    shards.add(shardNode.getKey());
                 }
             }
             if (MapUtils.isNotEmpty(idToShards)) {
