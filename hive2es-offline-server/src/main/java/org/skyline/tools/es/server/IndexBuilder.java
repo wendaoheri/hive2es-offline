@@ -162,7 +162,8 @@ public class IndexBuilder {
     public void downloadAndUnzipShard(String srcPath, String destPath, String indexName) {
         log.info("Download and unzip index bundle from hdfs[{}] to local[{}] start", srcPath, destPath);
         Set<String> processedPaths = Sets.newHashSet();
-        List<CountDownLatch> latches = Lists.newArrayList();
+        //needn't wait
+//        List<CountDownLatch> latches = Lists.newArrayList();
         File dstDir = new File(destPath);
         if (!dstDir.exists()) {
             log.info("Dest path not exists and create it {}", destPath);
@@ -187,7 +188,7 @@ public class IndexBuilder {
                 log.info("Got new path size : {} and processed path size:{}", paths.size(),
                         processedPaths.size());
                 CountDownLatch latch = new CountDownLatch(paths.size());
-                latches.add(latch);
+//                latches.add(latch);
                 paths.forEach(srcFile -> {
                     String fileName = srcFile.substring(srcFile.lastIndexOf('/') + 1);
                     String from = srcPath + '/' + fileName;
@@ -199,13 +200,14 @@ public class IndexBuilder {
             }
         }
         log.info("Wait shard partition download and unzip");
-        try {
-            for (CountDownLatch latch : latches) {
-                latch.await();
-            }
-        } catch (InterruptedException e) {
-            log.info("Wait shard partition download and unzip error", e);
-        }
+        //neend't wait
+//        try {
+//            for (CountDownLatch latch : latches) {
+//                latch.await();
+//            }
+//        } catch (InterruptedException e) {
+//            log.info("Wait shard partition download and unzip error", e);
+//        }
         log.info("Download and unzip index bundle from hdfs[{}] to local[{}] end", srcPath, destPath);
     }
 
@@ -228,7 +230,7 @@ public class IndexBuilder {
     }
 
     //改成之移动lucene文件,并更改lucene的user data
-    private synchronized void moveLuceneToESDataDir(String indexName, String shardId,
+    private void moveLuceneToESDataDir(String indexName, String shardId,
                                                        String dataPath, String finalIndexPath) throws IOException {
         // 从临时目录把lucene文件移到es的分片索引目录下面
         //shard中，0/index 这一级移到目录下，名字不用改
@@ -330,7 +332,7 @@ public class IndexBuilder {
     /**
      * 使用Lucene合并索引会非常慢，所以这里直接进行文件移动，然后重新生成segment信息
      */
-    private String mergeIndex(String indexBundlePath) throws IOException {
+    private synchronized String mergeIndex(String indexBundlePath) throws IOException {
         Path path = Paths.get(indexBundlePath);
 
         log.info("start merge index for shard " + path.getFileName());
