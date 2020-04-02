@@ -265,7 +265,6 @@ public class NodeService {
             if (MapUtils.isNotEmpty(idToShards)) {
                 String idToShardsJSON = JSON.toJSONString(idToShards);
                 registryCenter.persist(indexPath + "/" + nodeId, idToShardsJSON);
-                log.info("es cluster asssion shards {} to host [{}]", idToShardsJSON, nodeId);
             }
         });
         log.info("End assign shard");

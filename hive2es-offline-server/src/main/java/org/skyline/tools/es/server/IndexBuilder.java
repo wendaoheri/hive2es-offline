@@ -80,6 +80,7 @@ public class IndexBuilder {
         String hdfsWorkDir = configData.getString("hdfsWorkDir");
         String indexName = configData.getString("indexName");
 
+        //TODO no need localstatdir
         Path localStateDir = Paths.get(Utils.mostFreeDir(workDirs), indexName);
         if (downloadAndMergeAllShards(idToShards, hdfsWorkDir, indexName, localStateDir)) {
             try {
@@ -121,23 +122,24 @@ public class IndexBuilder {
         log.info("Submit download and merge index task for node [{}]", nodeId);
 
         shards.forEach(shardId -> processTaskExecutor.submit(() -> {
-
+            ///data/data03/es/data/paic-elasticsearch/nodes/0
+            ///data/data03/es/data/paic-elasticsearch/nodes/0/indices/stock_20200324/0/index
             String dataPath = esClient.getShardDataPath(indexName, Integer.getInteger(shardId));
+            log.info("es's data path is: "+dataPath);
             // 选择最空闲的一个路径放索引
             chosenPaths.add(dataPath);
             log.info("Most free data dir is {}", dataPath);
 
             String srcPath = Paths.get(hdfsWorkDir, indexName, shardId).toString();
+            log.info("hdfs path is: "+srcPath);
             String workDir = Utils.sameDiskDir(workDirs, dataPath);
-            log.info("Chosen work dir is {}", workDir);
             String destPath = Paths.get(workDir, indexName, shardId).toString();
+            log.info("Chosen tmpwork dir is {}", workDir);
 
             log.info("Build index shard [{}] for node [{}]", shardId, nodeId);
             try {
-                // Need Sync
+                // onlu solve segment file
                 downloadAndUnzipShard(srcPath, destPath, indexName);
-
-                downloadStateFile(hdfsWorkDir, indexName, localStateDir);
 
                 log.info("Merge index bundle in dir[{}] ", destPath);
                 String finalIndexPath = mergeIndex(destPath);
