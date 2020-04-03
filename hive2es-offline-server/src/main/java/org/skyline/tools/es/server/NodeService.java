@@ -99,7 +99,6 @@ public class NodeService {
                 e.printStackTrace();
             }
 
-
             if (leaderSelectorController.hasLeadership()) {
                 assignShards(configData, indexPath);
                 registryCenter.persist(indexPath + "/" + ASSIGN_FLAG, "");
@@ -111,7 +110,7 @@ public class NodeService {
                 if (MapUtils.isNotEmpty(currentNodeShards)) {
                     boolean success = indexBuilder.build(currentNodeShards, configData);
                     if (success) {
-                        registryCenter.delete(indexNodePath);
+//                        registryCenter.delete(indexNodePath);
                         log.info("Build index for {} complete", indexNodePath);
                     }
                 }

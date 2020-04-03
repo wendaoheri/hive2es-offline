@@ -6,7 +6,6 @@ import com.google.common.collect.Sets;
 
 import java.io.File;
 import java.io.FileInputStream;
-import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
@@ -14,27 +13,20 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.*;
-import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.Future;
 import java.util.stream.Collectors;
 
 import lombok.extern.slf4j.Slf4j;
-import org.apache.commons.compress.utils.Lists;
 import org.apache.commons.io.FileUtils;
 import org.apache.lucene.index.SegmentCommitInfo;
 import org.apache.lucene.index.SegmentInfo;
 import org.apache.lucene.index.SegmentInfos;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.FSDirectory;
-import org.elasticsearch.common.Strings;
 import org.elasticsearch.index.translog.Translog;
 import org.skyline.tools.es.server.config.ThreadPoolConfig.VisibleThreadPoolTaskExecutor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
-import org.springframework.util.concurrent.ListenableFuture;
-import org.springframework.util.concurrent.ListenableFutureCallback;
 
 /**
  * @author Sean Liu
@@ -79,7 +71,7 @@ public class IndexBuilder {
 
         String hdfsWorkDir = configData.getString("hdfsWorkDir");
         String indexName = configData.getString("indexName");
-
+        log.info("start build: "+indexName+":"+indexName);
         //TODO no need localstatdir
         Path localStateDir = Paths.get(Utils.mostFreeDir(workDirs), indexName);
         if (downloadAndMergeAllShards(idToShards, hdfsWorkDir, indexName, localStateDir)) {
