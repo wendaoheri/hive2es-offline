@@ -115,6 +115,7 @@ public class IndexBuilder {
         for (String shardId : shards) {
             ///data/data03/es/data/paic-elasticsearch/nodes/0
             ///data/data03/es/data/paic-elasticsearch/nodes/0/indices/stock_20200324/0/index
+
             String dataPath = esClient.getShardDataPath(indexName, Integer.getInteger(shardId));
             log.info("es's data path is: "+dataPath);
             // 选择最空闲的一个路径放索引

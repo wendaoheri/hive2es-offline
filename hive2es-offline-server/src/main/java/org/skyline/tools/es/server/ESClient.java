@@ -108,11 +108,14 @@ public class ESClient {
     }
     //这时没有副本
     public String getShardDataPath(String indexName,int shardId){
+        log.info("try to get index "+indexName+" shard "+shardId+" data path");
         ShardStats[] shards = client.admin().indices().prepareStats(indexName).get().getShards();
+        log.info("shard list is: "+shards);
         String shardDataPath = "";
         for (ShardStats shard : shards) {
             if (shard.getShardRouting().getId() == shardId){
                 shardDataPath = shard.getDataPath();
+                log.info("get "+shardId+" path:" +shardDataPath);
             }
         }
         return shardDataPath;
