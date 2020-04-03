@@ -226,11 +226,12 @@ public class IndexBuilder {
         //shard中，0/index 这一级移到目录下，名字不用改
         Path from = Paths.get(finalIndexPath+"/"+INDEX_FILE);
         Path to = Paths.get(dataPath, "indices", indexName, shardId,INDEX_FILE);
-
-        if (!Files.exists(to.getParent())) {
-            log.info("Create index folder : {}", to.getParent());
-            Files.createDirectories(to.getParent());
-        }
+        //删掉原lucene文件
+        Files.delete(to);
+//        if (!Files.exists(to)) {
+//            log.info("Create index folder : {}", to.getParent());
+//            Files.createDirectories(to.getParent());
+//        }
 
         log.info("Move index from {} to {}", from, to);
         Files.move(from, to);
