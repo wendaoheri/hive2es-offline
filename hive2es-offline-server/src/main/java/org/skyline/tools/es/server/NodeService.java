@@ -88,6 +88,7 @@ public class NodeService {
     public void buildIndex(String indexPath, String data) {
         new Thread(() -> {
             String indexNodePath = indexPath + "/" + localNode.getNodeId();
+
             // 在开始build之前先各自更新一下当前节点上运行es data node数量，防止data node掉线
             this.updateESNodeInfo();
             JSONObject configData = JSON.parseObject(data);
@@ -110,7 +111,8 @@ public class NodeService {
                 if (MapUtils.isNotEmpty(currentNodeShards)) {
                     boolean success = indexBuilder.build(currentNodeShards, configData);
                     if (success) {
-                        registryCenter.delete(indexNodePath);
+                        //TODO is to delete es node Path
+//                        registryCenter.delete(indexNodePath);
                         log.info("Build index for {} complete", indexNodePath);
                     }
                 }
