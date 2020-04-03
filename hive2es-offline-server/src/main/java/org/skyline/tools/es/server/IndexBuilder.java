@@ -99,26 +99,24 @@ public class IndexBuilder {
                                               String hdfsWorkDir, String indexName, Path localStateDir) {
         Set<String> chosenPaths = Sets.newConcurrentHashSet();
         int shardNum = idToShards.values().stream().mapToInt(x -> x.size()).sum();
-        CountDownLatch allShardsLatch = new CountDownLatch(shardNum);
+//        CountDownLatch allShardsLatch = new CountDownLatch(shardNum);
         idToShards.entrySet().forEach(entry -> {
             String nodeId = entry.getKey();
             List<String> shards = entry.getValue();
-            downloadAndMergeByNode(nodeId, shards, hdfsWorkDir, indexName, localStateDir, chosenPaths,
-                    allShardsLatch);
+            downloadAndMergeByNode(nodeId, shards, hdfsWorkDir, indexName, localStateDir, chosenPaths);
         });
         log.info("Wait all partition download and merge");
-        try {
-            allShardsLatch.await();
-        } catch (InterruptedException e) {
-            log.info("Wait all partition download and merge error", e);
-        }
+//        try {
+//            allShardsLatch.await();
+//        } catch (InterruptedException e) {
+//            log.info("Wait all partition download and merge error", e);
+//        }
         return true;
     }
 
     private void downloadAndMergeByNode(String nodeId, List<String> shards,
                                         String hdfsWorkDir,
-                                        String indexName, Path localStateDir, Set<String> chosenPaths,
-                                        CountDownLatch allShardsLatch) {
+                                        String indexName, Path localStateDir, Set<String> chosenPaths) {
         log.info("Submit download and merge index task for node [{}]", nodeId);
 
         shards.forEach(shardId -> processTaskExecutor.submit(() -> {
@@ -127,7 +125,7 @@ public class IndexBuilder {
             String dataPath = esClient.getShardDataPath(indexName, Integer.getInteger(shardId));
             log.info("es's data path is: "+dataPath);
             // 选择最空闲的一个路径放索引
-            chosenPaths.add(dataPath);
+//            chosenPaths.add(dataPath);
             log.info("Most free data dir is {}", dataPath);
 
             String srcPath = Paths.get(hdfsWorkDir, indexName, shardId).toString();
@@ -148,7 +146,7 @@ public class IndexBuilder {
                 log.error(
                         "Build index bundle from hdfs[" + srcPath + "] failed", e);
             } finally {
-                allShardsLatch.countDown();
+//                allShardsLatch.countDown();
                 try {
                     log.info("Delete shard tmp dir {}", destPath);
                     FileUtils.deleteDirectory(new File(destPath));
@@ -187,13 +185,13 @@ public class IndexBuilder {
             } else {
                 log.info("Got new path size : {} and processed path size:{}", paths.size(),
                         processedPaths.size());
-                CountDownLatch latch = new CountDownLatch(paths.size());
+//                CountDownLatch latch = new CountDownLatch(paths.size());
 //                latches.add(latch);
                 paths.forEach(srcFile -> {
                     String fileName = srcFile.substring(srcFile.lastIndexOf('/') + 1);
                     String from = srcPath + '/' + fileName;
                     String to = destPath;
-                    submitDownloadAndUnzipShardPartitionTask(from, to, latch);
+                    submitDownloadAndUnzipShardPartitionTask(from, to);
                 });
 
                 processedPaths.addAll(paths);
@@ -211,8 +209,7 @@ public class IndexBuilder {
         log.info("Download and unzip index bundle from hdfs[{}] to local[{}] end", srcPath, destPath);
     }
 
-    private void submitDownloadAndUnzipShardPartitionTask(String srcPath, String destPath,
-                                                          CountDownLatch latch) {
+    private void submitDownloadAndUnzipShardPartitionTask(String srcPath, String destPath) {
         log.info("Submit download and unzip task from {} to {}", srcPath, destPath);
         downloadTaskExecutor.execute(() -> {
             log.info("Download and unzip start with thread pool info : ");
@@ -222,7 +219,6 @@ public class IndexBuilder {
             } catch (IOException e) {
                 log.error("Download index file " + srcPath + " error", e);
             } finally {
-                latch.countDown();
                 log.info("Download and unzip end with thread pool info : ");
                 downloadTaskExecutor.showThreadPoolInfo();
             }
