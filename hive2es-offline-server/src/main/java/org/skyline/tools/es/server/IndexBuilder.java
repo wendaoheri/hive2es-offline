@@ -140,6 +140,8 @@ public class IndexBuilder {
             } catch (IOException e) {
                 log.error(
                         "Build index bundle from hdfs[" + srcPath + "] failed", e);
+            } catch (InterruptedException e) {
+                e.printStackTrace();
             } finally {
 //                allShardsLatch.countDown();
 //                try {
@@ -222,12 +224,13 @@ public class IndexBuilder {
 
     //改成之移动lucene文件,并更改lucene的user data
     private void moveLuceneToESDataDir(String indexName, String shardId,
-                                                       String dataPath, String finalIndexPath) throws IOException {
+                                                       String dataPath, String finalIndexPath) throws IOException, InterruptedException {
         // 从临时目录把lucene文件移到es的分片索引目录下面
         //shard中，0/index 这一级移到目录下，名字不用改
         Path from = Paths.get(finalIndexPath+"/"+INDEX_FILE);
         Path to = Paths.get(dataPath, "indices", indexName, shardId,INDEX_FILE);
         //删掉原lucene文件
+        Utils.setPermissionRecursive(to);
         Files.delete(to);
 //        if (!Files.exists(to)) {
 //            log.info("Create index folder : {}", to.getParent());
