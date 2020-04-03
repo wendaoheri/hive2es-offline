@@ -112,7 +112,7 @@ public class IndexBuilder {
         log.info("Submit download and merge index task for node [{}]", nodeId);
         log.info("assion shards: "+shards.size()+":"+shards);
 //        shards.forEach(shardId -> processTaskExecutor.submit(() -> {
-        shards.forEach(shardId ->  {
+        for (String shardId : shards) {
             ///data/data03/es/data/paic-elasticsearch/nodes/0
             ///data/data03/es/data/paic-elasticsearch/nodes/0/indices/stock_20200324/0/index
             String dataPath = esClient.getShardDataPath(indexName, Integer.getInteger(shardId));
@@ -147,7 +147,7 @@ public class IndexBuilder {
                     log.error("Delete shard tmp dir error", e);
                 }
             }
-        });
+        }
     }
 
     public void downloadAndUnzipShard(String srcPath, String destPath, String indexName) {
