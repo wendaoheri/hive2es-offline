@@ -135,6 +135,7 @@ public class IndexBuilder {
 
                 log.info("Merge index bundle in dir[{}] ", destPath);
                 String finalIndexPath = mergeIndex(destPath);
+//                destPath
                 moveLuceneToESDataDir(indexName, shardId, dataPath, finalIndexPath);
             } catch (IOException e) {
                 log.error(
@@ -247,6 +248,7 @@ public class IndexBuilder {
     }
 
     private boolean getSegInfo(String tlog){
+        log.info("getSeginfo: "+tlog);
         //TODO: ensure no flush
         //appcom/es/data/uat-es/nodes/0/indices/lead/0/translog/translog-1.tlog
         File file = new File(tlog);
@@ -266,6 +268,7 @@ public class IndexBuilder {
     }
 
     private void setToLucene(Path segPath){
+        log.info("set to lucene: "+segPath);
         try {
             FSDirectory directory = FSDirectory.open(segPath);
             SegmentInfos segmentInfos = SegmentInfos.readLatestCommit(directory);
@@ -337,46 +340,46 @@ public class IndexBuilder {
             String originSegmentFileName = segmentInfos.getSegmentsFileName();
             Path originSegmentPath = directory.getDirectory().resolve(originSegmentFileName);
             log.info("Original segment info file path is {}", originSegmentPath.toString());
-            List<SegmentCommitInfo> infos = new ArrayList<>();
-
-            for (int i = 1; i < indexList.size(); i++) {
-                FSDirectory dir = FSDirectory.open(indexList.get(i).resolve("index"));
-                SegmentInfos sis = SegmentInfos.readLatestCommit(dir);
-                for (SegmentCommitInfo info : sis) {
-                    String newSegName = newSegmentName(segmentInfos);
-                    log.info("New segment name is {}", newSegName);
-                    infos.add(copySegmentAsIs(directory, info, newSegName));
-                }
-            }
-            segmentInfos.addAll(infos);
-            SegmentInfos pendingCommit = segmentInfos.clone();
-            Method prepareCommit = pendingCommit.getClass()
-                    .getDeclaredMethod("prepareCommit", Directory.class);
-            prepareCommit.setAccessible(true);
-            prepareCommit.invoke(pendingCommit, directory);
-
-            log.info("Add pending segment info file");
-
-            Method updateGeneration = segmentInfos.getClass()
-                    .getDeclaredMethod("updateGeneration", SegmentInfos.class);
-            updateGeneration.setAccessible(true);
-            updateGeneration.invoke(segmentInfos, pendingCommit);
-
-            log.info("Update segment info generation");
-
-            Method finishCommit = pendingCommit.getClass()
-                    .getDeclaredMethod("finishCommit", Directory.class);
-            finishCommit.setAccessible(true);
-            finishCommit.invoke(pendingCommit, directory);
-
-            log.info("Finish segment info commit");
-
-            Files.delete(originSegmentPath);
-            log.info("Delete origin segment info file {}", originSegmentPath.toString());
-
-            log.info("merge index for shard " + path.getFileName() + " done");
-        } catch (IOException | NoSuchMethodException | IllegalAccessException | InvocationTargetException e) {
-            log.error("Merge index for shard " + path.getFileName() + " error", e);
+//            List<SegmentCommitInfo> infos = new ArrayList<>();
+//
+//            for (int i = 1; i < indexList.size(); i++) {
+//                FSDirectory dir = FSDirectory.open(indexList.get(i).resolve("index"));
+//                SegmentInfos sis = SegmentInfos.readLatestCommit(dir);
+//                for (SegmentCommitInfo info : sis) {
+//                    String newSegName = newSegmentName(segmentInfos);
+//                    log.info("New segment name is {}", newSegName);
+//                    infos.add(copySegmentAsIs(directory, info, newSegName));
+//                }
+//            }
+//            segmentInfos.addAll(infos);
+//            SegmentInfos pendingCommit = segmentInfos.clone();
+//            Method prepareCommit = pendingCommit.getClass()
+//                    .getDeclaredMethod("prepareCommit", Directory.class);
+//            prepareCommit.setAccessible(true);
+//            prepareCommit.invoke(pendingCommit, directory);
+//
+//            log.info("Add pending segment info file");
+//
+//            Method updateGeneration = segmentInfos.getClass()
+//                    .getDeclaredMethod("updateGeneration", SegmentInfos.class);
+//            updateGeneration.setAccessible(true);
+//            updateGeneration.invoke(segmentInfos, pendingCommit);
+//
+//            log.info("Update segment info generation");
+//
+//            Method finishCommit = pendingCommit.getClass()
+//                    .getDeclaredMethod("finishCommit", Directory.class);
+//            finishCommit.setAccessible(true);
+//            finishCommit.invoke(pendingCommit, directory);
+//
+//            log.info("Finish segment info commit");
+//
+//            Files.delete(originSegmentPath);
+//            log.info("Delete origin segment info file {}", originSegmentPath.toString());
+//
+//            log.info("merge index for shard " + path.getFileName() + " done");
+//        } catch (IOException | NoSuchMethodException | IllegalAccessException | InvocationTargetException e) {
+//            log.error("Merge index for shard " + path.getFileName() + " error", e);
         }
         return indexList.get(0).toString();
     }
