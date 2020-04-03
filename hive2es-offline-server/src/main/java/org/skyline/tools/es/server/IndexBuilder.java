@@ -71,7 +71,7 @@ public class IndexBuilder {
 
         String hdfsWorkDir = configData.getString("hdfsWorkDir");
         String indexName = configData.getString("indexName");
-        log.info("start build: "+indexName+":"+indexName);
+        log.info("start build: "+indexName+":"+hdfsWorkDir);
         //TODO no need localstatdir
         Path localStateDir = Paths.get(Utils.mostFreeDir(workDirs), indexName);
         if (downloadAndMergeAllShards(idToShards, hdfsWorkDir, indexName, localStateDir)) {
@@ -110,7 +110,7 @@ public class IndexBuilder {
                                         String hdfsWorkDir,
                                         String indexName, Path localStateDir, Set<String> chosenPaths) {
         log.info("Submit download and merge index task for node [{}]", nodeId);
-
+        log.info("assion shards: "+shards.size()+":"+shards);
         shards.forEach(shardId -> processTaskExecutor.submit(() -> {
             ///data/data03/es/data/paic-elasticsearch/nodes/0
             ///data/data03/es/data/paic-elasticsearch/nodes/0/indices/stock_20200324/0/index
