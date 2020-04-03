@@ -141,12 +141,12 @@ public class IndexBuilder {
                         "Build index bundle from hdfs[" + srcPath + "] failed", e);
             } finally {
 //                allShardsLatch.countDown();
-                try {
-                    log.info("Delete shard tmp dir {}", destPath);
-                    FileUtils.deleteDirectory(new File(destPath));
-                } catch (IOException e) {
-                    log.error("Delete shard tmp dir error", e);
-                }
+//                try {
+//                    log.info("Delete shard tmp dir {}", destPath);
+//                    FileUtils.deleteDirectory(new File(destPath));
+//                } catch (IOException e) {
+//                    log.error("Delete shard tmp dir error", e);
+//                }
             }
         }
     }
@@ -224,7 +224,7 @@ public class IndexBuilder {
                                                        String dataPath, String finalIndexPath) throws IOException {
         // 从临时目录把lucene文件移到es的分片索引目录下面
         //shard中，0/index 这一级移到目录下，名字不用改
-        Path from = Paths.get(finalIndexPath+INDEX_FILE);
+        Path from = Paths.get(finalIndexPath+"/"+INDEX_FILE);
         Path to = Paths.get(dataPath, "indices", indexName, shardId,INDEX_FILE);
 
         if (!Files.exists(to.getParent())) {
