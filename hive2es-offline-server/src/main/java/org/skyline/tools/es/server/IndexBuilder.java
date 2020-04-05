@@ -335,12 +335,19 @@ public class IndexBuilder {
     private synchronized String mergeIndex(String indexBundlePath) throws IOException {
         Path path = Paths.get(indexBundlePath);
         log.info("shard " + path.getFileName()+" in path"+ path.toString());
-        List<Path> indexList = Files.list(path).filter(p -> Files.isDirectory(p))
-                .collect(Collectors.toList());
-        log.info("indexList: "+indexList+" size: "+indexList.size());
-        if(indexList.size()==0){
+        File parentFile = new File(indexBundlePath);
+        File[] containFiles = parentFile.listFiles();
+        if(containFiles.length == 0){
             return "1";
         }
+        List<Path> indexList = new ArrayList<>();
+        for(File shardFile : containFiles){
+            log.info("shardFile: "+shardFile);
+            if(shardFile.isDirectory()){
+                indexList.add(shardFile.toPath());
+            }
+        }
+        log.info("indexList: "+indexList+" size: "+indexList.size());
         Collections.sort(indexList);
         try (
                 FSDirectory directory = FSDirectory.open(indexList.get(0).resolve("index"))
