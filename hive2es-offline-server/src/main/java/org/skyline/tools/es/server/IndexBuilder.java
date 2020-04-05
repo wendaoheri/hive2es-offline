@@ -135,7 +135,7 @@ public class IndexBuilder {
 
                 log.info("Merge index bundle in dir[{}] ", destPath);
                 String finalIndexPath = mergeIndex(destPath);
-                if(finalIndexPath){
+                if(finalIndexPath.equals("1")){
                     return ;
                 }
 //                destPath
@@ -333,11 +333,12 @@ public class IndexBuilder {
      * 使用Lucene合并索引会非常慢，所以这里直接进行文件移动，然后重新生成segment信息
      */
     private synchronized String mergeIndex(String indexBundlePath) throws IOException {
-        Path path = Paths.get(indexBundlePath);
-        File indexDir = new File(path);
+       File indexDir = new File(indexBundlePath);
         if(!indexDir.exists()){
             return "1";
         }
+
+        Path path = Paths.get(indexBundlePath);
         log.info("shard " + path.getFileName()+" in path"+ path.toString());
         List<Path> indexList = Files.list(path).filter(p -> Files.isDirectory(p))
                 .collect(Collectors.toList());
