@@ -336,7 +336,9 @@ public class IndexBuilder {
         Path path = Paths.get(indexBundlePath);
         log.info("shard " + path.getFileName()+" in path"+ path.toString());
         File parentFile = new File(indexBundlePath);
+        log.info("get parentFile suceecss");
         File[] containFiles = parentFile.listFiles();
+        log.info("num of files "+ containFiles.length);
         if(containFiles.length == 0){
             return "1";
         }
