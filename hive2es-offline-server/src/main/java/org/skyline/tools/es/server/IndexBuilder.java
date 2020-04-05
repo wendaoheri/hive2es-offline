@@ -337,6 +337,7 @@ public class IndexBuilder {
         log.info("shard " + path.getFileName()+" in path"+ path.toString());
         List<Path> indexList = Files.list(path).filter(p -> Files.isDirectory(p))
                 .collect(Collectors.toList());
+        log.info("indexList: "+indexList+" size: "+indexList.size())
         if(indexList.size()==0){
             return "1";
         }
@@ -344,6 +345,7 @@ public class IndexBuilder {
         try (
                 FSDirectory directory = FSDirectory.open(indexList.get(0).resolve("index"))
         ) {
+            log.info("Original segment info file path is {}", indexList.get(0).resolve("index").toString());
             SegmentInfos segmentInfos = SegmentInfos.readLatestCommit(directory);
             String originSegmentFileName = segmentInfos.getSegmentsFileName();
             Path originSegmentPath = directory.getDirectory().resolve(originSegmentFileName);
