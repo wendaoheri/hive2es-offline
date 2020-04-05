@@ -135,6 +135,9 @@ public class IndexBuilder {
 
                 log.info("Merge index bundle in dir[{}] ", destPath);
                 String finalIndexPath = mergeIndex(destPath);
+                if(finalIndexPath){
+                    return ;
+                }
 //                destPath
                 moveLuceneToESDataDir(indexName, shardId, dataPath, finalIndexPath);
             } catch (IOException e) {
@@ -331,8 +334,11 @@ public class IndexBuilder {
      */
     private synchronized String mergeIndex(String indexBundlePath) throws IOException {
         Path path = Paths.get(indexBundlePath);
-
-        log.info("shard " + path.getFileName()+" in path"+ path.toString);
+        File indexDir = new File(path);
+        if(!indexDir.exists()){
+            return "1";
+        }
+        log.info("shard " + path.getFileName()+" in path"+ path.toString());
         List<Path> indexList = Files.list(path).filter(p -> Files.isDirectory(p))
                 .collect(Collectors.toList());
         Collections.sort(indexList);
