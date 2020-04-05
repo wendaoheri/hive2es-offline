@@ -333,10 +333,8 @@ public class IndexBuilder {
      * 使用Lucene合并索引会非常慢，所以这里直接进行文件移动，然后重新生成segment信息
      */
     private synchronized String mergeIndex(String indexBundlePath) throws IOException {
-        Path path = Paths.get(indexBundlePath);
-        log.info("shard " + path.getFileName()+" in path"+ path.toString());
         File parentFile = new File(indexBundlePath);
-        log.info("get parentFile suceecss");
+        log.info("get parentFile suceecss:"+parentFile.getAbsolutePath()+"-"+indexBundlePath);
         File[] containFiles = parentFile.listFiles();
         log.info("num of files "+ containFiles.length);
         if(containFiles.length == 0){
