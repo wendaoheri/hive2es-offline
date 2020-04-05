@@ -332,7 +332,7 @@ public class IndexBuilder {
     private synchronized String mergeIndex(String indexBundlePath) throws IOException {
         Path path = Paths.get(indexBundlePath);
 
-        log.info("start merge index for shard " + path.getFileName());
+        log.info("shard " + path.getFileName()+" in path"+ path.toString);
         List<Path> indexList = Files.list(path).filter(p -> Files.isDirectory(p))
                 .collect(Collectors.toList());
         Collections.sort(indexList);
