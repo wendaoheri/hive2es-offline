@@ -337,7 +337,7 @@ public class IndexBuilder {
         log.info("shard " + path.getFileName()+" in path"+ path.toString());
         List<Path> indexList = Files.list(path).filter(p -> Files.isDirectory(p))
                 .collect(Collectors.toList());
-        log.info("indexList: "+indexList+" size: "+indexList.size())
+        log.info("indexList: "+indexList+" size: "+indexList.size());
         if(indexList.size()==0){
             return "1";
         }
