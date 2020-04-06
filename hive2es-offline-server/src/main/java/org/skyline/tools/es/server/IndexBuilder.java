@@ -263,13 +263,14 @@ public class IndexBuilder {
         //TODO: ensure no flush
         //appcom/es/data/uat-es/nodes/0/indices/lead/0/translog/translog-1.tlog
         File file = new File(tlog);
-        FileInputStream fileInputStream = null;
         try {
             //read UUID from translog-1.tlg:
-            fileInputStream = new FileInputStream(file);
+            FileInputStream fileInputStream = new FileInputStream(file);
             byte[] bytes = new byte[1024];
             while(fileInputStream.read(bytes) != -1){
-                TLOG_UUID = new String(bytes,20,43).trim();
+                String uuid = new String(bytes,20,43).trim();
+                log.info("uuid: "+uuid);
+                TLOG_UUID = uuid;
             }
             log.info("get tlog file: "+tlog+" uuid: "+TLOG_UUID);
         } catch (Exception e) {
@@ -299,7 +300,6 @@ public class IndexBuilder {
         }catch (Exception e){
             e.printStackTrace();
         }
-
     }
 
     private synchronized boolean downloadStateFile(String hdfsWorkDir, String indexName,
