@@ -258,24 +258,20 @@ public class IndexBuilder {
         Utils.setPermissionRecursive(to);
     }
 
-    private boolean getSegInfo(String tlog){
+    private boolean getSegInfo(String tlog) throws IOException{
         log.info("getSeginfo: "+tlog);
         //TODO: ensure no flush
         //appcom/es/data/uat-es/nodes/0/indices/lead/0/translog/translog-1.tlog
         File file = new File(tlog);
-        try {
-            //read UUID from translog-1.tlg:
-            FileInputStream fileInputStream = new FileInputStream(file);
-            log.info(file.getPath().toString());
-            byte[] bytes = new byte[1024];
-            fileInputStream.read(bytes);
-            String uuid = new String(bytes,20,43).trim();
-            log.info("uuid: "+uuid);
-            TLOG_UUID = uuid;
-            log.info("get tlog file: "+tlog+" uuid: "+TLOG_UUID);
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
+        //read UUID from translog-1.tlg:
+        FileInputStream fileInputStream = new FileInputStream(file);
+        log.info(file.getPath().toString());
+        byte[] bytes = new byte[1024];
+        fileInputStream.read(bytes);
+        String uuid = new String(bytes,20,43).trim();
+        log.info("uuid: "+uuid);
+        TLOG_UUID = uuid;
+        log.info("get tlog file: "+tlog+" uuid: "+TLOG_UUID);
         return true;
     }
 
