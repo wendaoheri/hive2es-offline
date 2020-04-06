@@ -65,7 +65,7 @@ public class IndexBuilder {
 
     private String TRANSLOG_TLOG_FILE = "translog-1.tolg";
 
-    private String TRANSLOG_GENERATION_KEY = "1";
+    private String TRANSLOG_GENERATION_VALUE = "1";
 
     public boolean build(Map<String, List<String>> idToShards, JSONObject configData) {
 
@@ -232,6 +232,13 @@ public class IndexBuilder {
         //shard中，0/index 这一级移到目录下，名字不用改
         Path from = Paths.get(finalIndexPath+"/"+INDEX_FILE);
         Path to = Paths.get(dataPath, "indices", indexName, shardId,INDEX_FILE);
+        //从segment文件获取UUID
+        FSDirectory segDir =  FSDirectory.open(to);
+        SegmentInfos segInfos =  SegmentInfos.readLatestCommit(segDir);
+        Map<String,String> uData = segInfos.getUserData();
+        log.info(uData);
+        TLOG_UUID = uData.get(Translog.TRANSLOG_UUID_KEY);
+        log.info(TLOG_UUID);
         //删掉原lucene文件
         Utils.setPermissionRecursive(to.getParent());
         File toDir = new File(to.toString());    
@@ -259,19 +266,19 @@ public class IndexBuilder {
     }
 
     private boolean getSegInfo(String tlog) throws IOException{
-        log.info("getSeginfo: "+tlog);
-        //TODO: ensure no flush
-        //appcom/es/data/uat-es/nodes/0/indices/lead/0/translog/translog-1.tlog
-        File file = new File(tlog);
-        //read UUID from translog-1.tlg:
-        FileInputStream fileInputStream = new FileInputStream(file);
-        log.info(file.getPath().toString());
-        byte[] bytes = new byte[1024];
-        fileInputStream.read(bytes);
-        String uuid = new String(bytes,20,43).trim();
-        log.info("uuid: "+uuid);
-        TLOG_UUID = uuid;
-        log.info("get tlog file: "+tlog+" uuid: "+TLOG_UUID);
+        // log.info("getSeginfo: "+tlog);
+        // //TODO: ensure no flush
+        // //appcom/es/data/uat-es/nodes/0/indices/lead/0/translog/translog-1.tlog
+        // File file = new File(tlog);
+        // //read UUID from translog-1.tlg:
+        // FileInputStream fileInputStream = new FileInputStream(file);
+        // log.info(file.getPath().toString());
+        // byte[] bytes = new byte[1024];
+        // fileInputStream.read(bytes);
+        // String uuid = new String(bytes,20,43).trim();
+        // log.info("uuid: "+uuid);
+        // TLOG_UUID = uuid;
+        // log.info("get tlog file: "+tlog+" uuid: "+TLOG_UUID);
         return true;
     }
 
@@ -281,7 +288,7 @@ public class IndexBuilder {
             FSDirectory directory = FSDirectory.open(segPath);
             SegmentInfos segmentInfos = SegmentInfos.readLatestCommit(directory);
             Map<String, String> commitData = new HashMap<>(2);
-            commitData.put(Translog.TRANSLOG_GENERATION_KEY, TRANSLOG_GENERATION_KEY);
+            commitData.put(Translog.TRANSLOG_GENERATION_KEY, TRANSLOG_GENERATION_VALUE);
             commitData.put(Translog.TRANSLOG_UUID_KEY, TLOG_UUID);
 
             Method setUserData = segmentInfos.getClass().getDeclaredMethod("setUserData", Map.class);
