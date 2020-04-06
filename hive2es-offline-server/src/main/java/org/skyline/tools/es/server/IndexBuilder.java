@@ -233,7 +233,7 @@ public class IndexBuilder {
         Path from = Paths.get(finalIndexPath+"/"+INDEX_FILE);
         Path to = Paths.get(dataPath, "indices", indexName, shardId,INDEX_FILE);
         //删掉原lucene文件
-        Utils.setPermissionRecursive(to);
+        Utils.setPermissionRecursive(to.getParent());
         Files.delete(to);
 //        if (!Files.exists(to)) {
 //            log.info("Create index folder : {}", to.getParent());

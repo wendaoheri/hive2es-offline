@@ -137,10 +137,11 @@ public class Utils {
     }
 
     public static void setPermissionRecursive(Path path) throws IOException, InterruptedException {
-        String cmdLine = "sudo chmod 777 "+path.toString();
+        String cmdLine = "sudo chmod -R 777 "+path.toString();
+        log.info("exec cmd: "+cmdLine);
         Process exec = Runtime.getRuntime().exec(cmdLine);
-        int i = exec.waitFor();
-
+        int i = exec.waitFor(); 
+        log.info("exec cmd result: "+i);
 //        System.out.println("run reslut: "+i);
 //        Set<PosixFilePermission> perms = PosixFilePermissions.fromString("rwxrwxrwx");
 //        Files.walk(path)
