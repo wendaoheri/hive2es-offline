@@ -232,13 +232,6 @@ public class IndexBuilder {
         //shard中，0/index 这一级移到目录下，名字不用改
         Path from = Paths.get(finalIndexPath+"/"+INDEX_FILE);
         Path to = Paths.get(dataPath, "indices", indexName, shardId,INDEX_FILE);
-        //从segment文件获取UUID
-        FSDirectory segDir =  FSDirectory.open(to);
-        SegmentInfos segInfos =  SegmentInfos.readLatestCommit(segDir);
-        Map<String,String> uData = segInfos.getUserData();
-        log.info(uData.toString());
-        TLOG_UUID = uData.get(Translog.TRANSLOG_UUID_KEY);
-        log.info(TLOG_UUID);
         //删掉原lucene文件
         Utils.setPermissionRecursive(to.getParent());
         File toDir = new File(to.toString());    
@@ -266,19 +259,28 @@ public class IndexBuilder {
     }
 
     private boolean getSegInfo(String tlog) throws IOException{
-        // log.info("getSeginfo: "+tlog);
-        // //TODO: ensure no flush
-        // //appcom/es/data/uat-es/nodes/0/indices/lead/0/translog/translog-1.tlog
-        // File file = new File(tlog);
-        // //read UUID from translog-1.tlg:
-        // FileInputStream fileInputStream = new FileInputStream(file);
-        // log.info(file.getPath().toString());
-        // byte[] bytes = new byte[1024];
-        // fileInputStream.read(bytes);
-        // String uuid = new String(bytes,20,43).trim();
-        // log.info("uuid: "+uuid);
-        // TLOG_UUID = uuid;
-        // log.info("get tlog file: "+tlog+" uuid: "+TLOG_UUID);
+        log.info("getSeginfo: "+tlog);
+        //TODO: ensure no flush
+        //appcom/es/data/uat-es/nodes/0/indices/lead/0/translog/translog-1.tlog
+        File file = new File(tlog);
+        //is file exists
+        while(!file.exists()){
+            try{
+                Thread.sleep(3000);
+            }catch (InterruptedException e){
+                e.printStackTrace();
+            }
+        }
+
+        //read UUID from translog-1.tlg:
+        FileInputStream fileInputStream = new FileInputStream(file);
+        log.info(file.getPath().toString());
+        byte[] bytes = new byte[1024];
+        fileInputStream.read(bytes);
+        String uuid = new String(bytes,20,43).trim();
+        log.info("uuid: "+uuid);
+        TLOG_UUID = uuid;
+        log.info("get tlog file: "+tlog+" uuid: "+TLOG_UUID);
         return true;
     }
 
