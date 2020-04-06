@@ -266,12 +266,12 @@ public class IndexBuilder {
         try {
             //read UUID from translog-1.tlg:
             FileInputStream fileInputStream = new FileInputStream(file);
+            log.info(file.getPath().toString());
             byte[] bytes = new byte[1024];
-            while(fileInputStream.read(bytes) != -1){
-                String uuid = new String(bytes,20,43).trim();
-                log.info("uuid: "+uuid);
-                TLOG_UUID = uuid;
-            }
+            fileInputStream.read(bytes);
+            String uuid = new String(bytes,20,43).trim();
+            log.info("uuid: "+uuid);
+            TLOG_UUID = uuid;
             log.info("get tlog file: "+tlog+" uuid: "+TLOG_UUID);
         } catch (Exception e) {
             e.printStackTrace();
