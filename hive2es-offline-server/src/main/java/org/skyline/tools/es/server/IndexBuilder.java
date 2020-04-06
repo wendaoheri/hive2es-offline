@@ -236,7 +236,7 @@ public class IndexBuilder {
         FSDirectory segDir =  FSDirectory.open(to);
         SegmentInfos segInfos =  SegmentInfos.readLatestCommit(segDir);
         Map<String,String> uData = segInfos.getUserData();
-        log.info(uData);
+        log.info(uData.toString());
         TLOG_UUID = uData.get(Translog.TRANSLOG_UUID_KEY);
         log.info(TLOG_UUID);
         //删掉原lucene文件
