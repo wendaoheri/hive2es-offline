@@ -110,10 +110,12 @@ public class ESClient {
     public String getShardDataPath(String indexName,int shardId){
         log.info("try to get index "+indexName+" shard "+shardId+" data path");
         ShardStats[] shards = client.admin().indices().prepareStats(indexName).get().getShards();
-        log.info("shard list is: "+shards);
+        log.info("shard length: "+shards.length);
         String shardDataPath = "";
         for (ShardStats shard : shards) {
-            if (shard.getShardRouting().getId() == shardId){
+            int id = shard.getShardRouting().getId();
+            log.info("shard id: "+id+" want id: "+shardId);
+            if (id == shardId){
                 shardDataPath = shard.getDataPath();
                 log.info("get "+shardId+" path:" +shardDataPath);
             }
