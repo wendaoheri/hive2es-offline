@@ -239,6 +239,7 @@ public class IndexBuilder {
         for(File indexFile: indexFiles){
             indexFile.delete();
         }
+        Files.delete(to);
 //        if (!Files.exists(to)) {
 //            log.info("Create index folder : {}", to.getParent());
 //            Files.createDirectories(to.getParent());
