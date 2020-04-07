@@ -247,7 +247,8 @@ public class IndexBuilder {
 
         log.info("Move index from {} to {}", from, to);
         Files.move(from, to);
-
+        //indics/indexName must set 777 permission or rebuilt index will fail
+        Utils.setPermissionRecursive(to.getParent().getParent());
         //更改segmentsInfo信息
         //TODO:once get null from tlog file, get the es version ,and then --
         //TODO: --use Strings.randomBase64UUID() create .tlog and .ckp file
@@ -255,7 +256,6 @@ public class IndexBuilder {
             //set to lucene
             setToLucene(to);
         }
-        Utils.setPermissionRecursive(to);
     }
 
     private boolean getSegInfo(String tlog) throws IOException{
@@ -270,8 +270,8 @@ public class IndexBuilder {
             }catch (InterruptedException e){
                 e.printStackTrace();
             }
+            log.info("translog file don't exists, wait 3s");
         }
-
         //read UUID from translog-1.tlg:
         FileInputStream fileInputStream = new FileInputStream(file);
         log.info(file.getPath().toString());
