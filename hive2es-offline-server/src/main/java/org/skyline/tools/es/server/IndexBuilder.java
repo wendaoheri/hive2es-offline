@@ -234,10 +234,20 @@ public class IndexBuilder {
         Path to = Paths.get(dataPath, "indices", indexName, shardId,INDEX_FILE);
         //删掉原lucene文件
         Utils.setPermissionRecursive(to.getParent());
+        Utils.setPermissionRecursive(from.getParent());
         File toDir = new File(to.toString());    
         File[] indexFiles = toDir.listFiles();
         for(File indexFile: indexFiles){
-            indexFile.delete();
+            if (indexFile.getName().equals("write.lock")){
+                Files.delete(from.resolve("write.lock"));
+                log.info("delete hdfs write.lock:"+from.resolve("write.lock"));
+                Files.move(indexFile.toPath(),from);
+                log.info("move es's write.lock:"+indexFile.getAbsolutePath());
+            }else {
+                indexFile.delete();
+            }
+            //1.使用es的write.lock
+            //2.删掉es的write.lock
         }
         Files.delete(to);
 //        if (!Files.exists(to)) {
