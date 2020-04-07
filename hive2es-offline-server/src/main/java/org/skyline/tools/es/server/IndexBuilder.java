@@ -63,7 +63,7 @@ public class IndexBuilder {
 
     private String TRANSLOG_PATH = "translog";
 
-    private String TRANSLOG_TLOG_FILE = "translog-1.tolg";
+    private String TRANSLOG_TLOG_FILE = "translog-1.tlog";
 
     private String TRANSLOG_GENERATION_VALUE = "1";
 
