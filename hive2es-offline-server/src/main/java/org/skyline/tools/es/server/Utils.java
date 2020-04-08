@@ -138,7 +138,7 @@ public class Utils {
 
 
     public static void chownDire(String path,String newOwner) throws IOException, InterruptedException {
-        String cmdLine2 = "sudo chown -R "+newOwner+":"+newOwner+ path;
+        String cmdLine2 = "sudo chown -R "+newOwner+":"+newOwner+" "+ path;
         Process exec2 = Runtime.getRuntime().exec(cmdLine2);
         int i2 = exec2.waitFor();
         log.info("exec: "+cmdLine2+" result: "+i2);
