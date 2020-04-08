@@ -312,6 +312,9 @@ public class IndexBuilder {
             commit.invoke(segmentInfos, directory);
 
             log.info("set userData: "+segmentInfos.getUserData());
+
+            Utils.setPermissionRecursive(segPath.getParent());
+            Utils.chownDire(segPath.getParent().toString(),"elasticsearch");
         }catch (Exception e){
             e.printStackTrace();
         }

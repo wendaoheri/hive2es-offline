@@ -136,6 +136,14 @@ public class Utils {
         }
     }
 
+
+    public static void chownDire(String path,String newOwner) throws IOException, InterruptedException {
+        String cmdLine2 = "sudo chown -R "+newOwner+":"+newOwner+ path;
+        Process exec2 = Runtime.getRuntime().exec(cmdLine2);
+        int i2 = exec2.waitFor();
+        log.info("exec: "+cmdLine2+" result: "+i2);
+    }
+
     public static void setPermissionRecursive(Path path) throws IOException, InterruptedException {
         String cmdLine = "sudo chmod -R 777 "+path.toString();
         log.info("exec cmd: "+cmdLine);

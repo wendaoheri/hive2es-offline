@@ -48,6 +48,7 @@ public class ESClient {
         log.info("ready to create index");
         Settings settings = Settings.builder()
                 .put("number_of_replicas", replicasNum)
+                .put("refresh_interval",-1)
                 .put("number_of_shards", shardNum).build();
         client.admin().indices()
                 .prepareCreate(indexName)
