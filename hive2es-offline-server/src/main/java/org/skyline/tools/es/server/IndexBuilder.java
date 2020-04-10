@@ -193,7 +193,6 @@ public class IndexBuilder {
                     String to = destPath;
                     submitDownloadAndUnzipShardPartitionTask(from, to);
                 });
-
                 processedPaths.addAll(paths);
             }
         }
@@ -211,18 +210,25 @@ public class IndexBuilder {
 
     private void submitDownloadAndUnzipShardPartitionTask(String srcPath, String destPath) {
         log.info("Submit download and unzip task from {} to {}", srcPath, destPath);
-        downloadTaskExecutor.execute(() -> {
-            log.info("Download and unzip start with thread pool info : ");
-            downloadTaskExecutor.showThreadPoolInfo();
-            try {
-                hdfsClient.downloadAndUnzipFile(srcPath, destPath);
-            } catch (IOException e) {
-                log.error("Download index file " + srcPath + " error", e);
-            } finally {
-                log.info("Download and unzip end with thread pool info : ");
-                downloadTaskExecutor.showThreadPoolInfo();
-            }
-        });
+        try {
+            hdfsClient.downloadAndUnzipFile(srcPath, destPath);
+        } catch (IOException e) {
+            log.info("Submit download and unzip task from {} to {} eorro", srcPath, destPath);
+            e.printStackTrace();
+        }
+
+//        downloadTaskExecutor.execute(() -> {
+//            log.info("Download and unzip start with thread pool info : ");
+//            downloadTaskExecutor.showThreadPoolInfo();
+//            try {
+//                hdfsClient.downloadAndUnzipFile(srcPath, destPath);
+//            } catch (IOException e) {
+//                log.error("Download index file " + srcPath + " error", e);
+//            } finally {
+//                log.info("Download and unzip end with thread pool info : ");
+//                downloadTaskExecutor.showThreadPoolInfo();
+//            }
+//        });
     }
 
     //改成之移动lucene文件,并更改lucene的user data

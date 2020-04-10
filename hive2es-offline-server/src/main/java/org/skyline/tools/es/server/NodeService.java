@@ -188,7 +188,6 @@ public class NodeService {
         esClient.createIndexFirst(indexName,0,36);
         log.info("create index finished: "+indexName);
 
-
 //        stsz030282 : [SOnMwP-vRlKiOqiNA_1p1w, Tbj6H9K0Q_SqgQMTW8CrKA]
         Map<String, String[]> allNodes = this.getAllRegisteredNode();
 
