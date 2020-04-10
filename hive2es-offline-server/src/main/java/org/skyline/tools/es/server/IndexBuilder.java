@@ -257,9 +257,8 @@ public class IndexBuilder {
             //2.删掉es的write.lock
         }
         Files.delete(to);
-        if (!Files.exists(to)) {
+        if (Files.exists(to)) {
             log.info("file exists,delte failed: "+to.toString());
-            return;
         }
 
         log.info("Move index from {} to {}", from, to);
