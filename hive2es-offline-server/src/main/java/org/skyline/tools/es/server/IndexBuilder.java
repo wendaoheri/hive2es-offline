@@ -257,10 +257,10 @@ public class IndexBuilder {
             //2.删掉es的write.lock
         }
         Files.delete(to);
-//        if (!Files.exists(to)) {
-//            log.info("Create index folder : {}", to.getParent());
-//            Files.createDirectories(to.getParent());
-//        }
+        if (!Files.exists(to)) {
+            log.info("file exists,delte failed: "+to.toString());
+            return;
+        }
 
         log.info("Move index from {} to {}", from, to);
         Files.move(from, to);
