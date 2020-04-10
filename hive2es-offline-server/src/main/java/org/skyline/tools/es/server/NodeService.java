@@ -183,8 +183,8 @@ public class NodeService {
         log.info("Start assign shard");
         log.info("version 3");
         String indexName = configData.getString("indexName");
-        int numShards = configData.getInteger("numShards");
-        log.info(indexName+":"+numShards+"--"+configData.toJSONString());
+//        int numShards = configData.getInteger("numShards");
+        log.info(indexName+"--"+configData.toJSONString());
         esClient.createIndexFirst(indexName,0,35);
         log.info("create index finished: "+indexName);
 
