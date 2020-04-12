@@ -12,6 +12,7 @@ import java.lang.reflect.Method;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.nio.file.StandardCopyOption;
 import java.util.*;
 
 import lombok.extern.slf4j.Slf4j;
@@ -134,16 +135,16 @@ public class IndexBuilder {
 
                 log.info("Merge index bundle in dir[{}] ", destPath);
                 String finalIndexPath = mergeIndex(destPath);
-                String localHdfsFile = Paths.get(finalIndexPath).getParent().getParent().toString();
+                String localHdfsFile = Paths.get(finalIndexPath).getParent().toString();
                 if (finalIndexPath.equals("1")) {
                     log.info("no segfile need deal, finish this node job");
                     return;
                 }
 //                destPath
                 moveLuceneToESDataDir(indexName, shardId, dataPath, finalIndexPath);
-                //delete tmp dir:custom_test_20191290/29/p_3
+                //delete tmp dir:custom_test_20191290/29/
                 log.info("delete localHdfsFile: "+localHdfsFile);
-                if (localHdfsFile.endsWith(indexName)){
+                if (localHdfsFile.contains(indexName)){
                     Utils.deleteDir(localHdfsFile);
                 }
             } catch (IOException e) {
@@ -251,24 +252,14 @@ public class IndexBuilder {
         File[] indexFiles = toDir.listFiles();
         for (File indexFile : indexFiles) {
             indexFile.delete();
-//            if (indexFile.getName().equals("write.lock")){
-//                Files.delete(from.resolve("write.lock"));
-//                log.info("delete hdfs write.lock:"+from.resolve("write.lock"));
-//                Files.move(indexFile.toPath(),from.resolve("write.lock"));
-//                log.info("move es's write.lock:"+indexFile.getAbsolutePath());
-//            }else {
-//                indexFile.delete();
-//            }
-            //1.使用es的write.lock
-            //2.删掉es的write.lock
         }
-        Files.delete(to);
         if (Files.exists(to)) {
             log.info("file exists,delte failed: " + to.toString());
+        }else {
+            log.info("file delted: "+to.toString());
         }
-
         log.info("Move index from {} to {}", from, to);
-        Files.move(from, to);
+        Files.move(from, to,StandardCopyOption.REPLACE_EXISTING);
         //indics/indexName must set 777 permission or rebuilt index will fail
         Utils.setPermissionRecursive(to.getParent().getParent());
         //更改segmentsInfo信息
