@@ -65,6 +65,7 @@ public class IndicesChangeController implements PathChildrenCacheListener {
 
     log.info("Got event type [{}] path [{}] data {} ", eventType, path, data);
 
+    //every server member do this
     switch (event.getType()) {
       case CHILD_ADDED:
         nodeService.buildIndex(path, data);

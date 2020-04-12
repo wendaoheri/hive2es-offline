@@ -135,11 +135,21 @@ public class IndexBuilder {
 
                 log.info("Merge index bundle in dir[{}] ", destPath);
                 String finalIndexPath = mergeIndex(destPath);
+                Path localHdfsFile = Paths.get(finalIndexPath).getParent().getParent();
                 if(finalIndexPath.equals("1")){
+                    if (Files.exists(localHdfsFile)){
+                        log.info("localHdfsFile exists and delete it");
+                        Files.delete(localHdfsFile);
+                    }else {
+                        log.info("localHdfsFile don't exists");
+                    }
                     return ;
                 }
 //                destPath
                 moveLuceneToESDataDir(indexName, shardId, dataPath, finalIndexPath);
+                //delete tmp dir:custom_test_20191290/29/p_3
+                log.info("delete localHdfsFile");
+                Files.delete(localHdfsFile);
             } catch (IOException e) {
                 log.error(
                         "Build index bundle from hdfs[" + srcPath + "] failed", e);

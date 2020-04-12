@@ -183,10 +183,11 @@ public class NodeService {
         log.info("Start assign shard");
         log.info("version 3");
         String indexName = configData.getString("indexName");
-//        int numShards = configData.getInteger("numShards");
+        int numberShards = configData.getIntValue("numberShards");
+        int numShards = configData.getInteger("numberShards");
         log.info(indexName+"--"+configData.toJSONString());
         esClient.createIndexFirst(indexName,0,35);
-        log.info("create index finished: "+indexName);
+        log.info("create index finished: "+indexName+"---"+numberShards+"--"+numShards);
 
 //        stsz030282 : [SOnMwP-vRlKiOqiNA_1p1w, Tbj6H9K0Q_SqgQMTW8CrKA]
         Map<String, String[]> allNodes = this.getAllRegisteredNode();
