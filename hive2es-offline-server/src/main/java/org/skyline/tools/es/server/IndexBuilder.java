@@ -135,31 +135,26 @@ public class IndexBuilder {
 
                 log.info("Merge index bundle in dir[{}] ", destPath);
                 String finalIndexPath = mergeIndex(destPath);
-                String localHdfsFile = Paths.get(finalIndexPath).getParent().toString();
                 if (finalIndexPath.equals("1")) {
                     log.info("no segfile need deal, finish this node job");
-                    return;
-                }
+                }else {
+                    String localHdfsFile = Paths.get(finalIndexPath).getParent().toString();
 //                destPath
-                moveLuceneToESDataDir(indexName, shardId, dataPath, finalIndexPath);
-                //delete tmp dir:custom_test_20191290/29/
-                log.info("delete localHdfsFile: "+localHdfsFile);
-                if (localHdfsFile.contains(indexName)){
-                    Utils.deleteDir(localHdfsFile);
+                    moveLuceneToESDataDir(indexName, shardId, dataPath, finalIndexPath);
+                    //delete tmp dir:custom_test_20191290/29/
+                    log.info("delete localHdfsFile: "+localHdfsFile);
+                    if (localHdfsFile.contains(indexName)){
+                        Utils.deleteDir(localHdfsFile);
+                    }
                 }
+
             } catch (IOException e) {
                 log.error(
                         "Build index bundle from hdfs[" + srcPath + "] failed", e);
             } catch (InterruptedException e) {
                 e.printStackTrace();
             } finally {
-//                allShardsLatch.countDown();
-//                try {
-//                    log.info("Delete shard tmp dir {}", destPath);
-//                    FileUtils.deleteDirectory(new File(destPath));
-//                } catch (IOException e) {
-//                    log.error("Delete shard tmp dir error", e);
-//                }
+
             }
         }
     }
