@@ -137,36 +137,30 @@ public class Utils {
     }
 
 
-    public static void chownDire(String path,String newOwner) throws IOException, InterruptedException {
-        String cmdLine2 = "sudo chown -R "+newOwner+":"+newOwner+" "+ path;
-        Process exec2 = Runtime.getRuntime().exec(cmdLine2);
-        int i2 = exec2.waitFor();
-        log.info("exec: "+cmdLine2+" result: "+i2);
+    public static int chownDire(String path,String newOwner) throws IOException, InterruptedException {
+        String cmdLine = "sudo chown -R "+newOwner+":"+newOwner+" "+ path;
+        return execCmdLine(cmdLine);
     }
 
-    public static void setPermissionRecursive(Path path) throws IOException, InterruptedException {
+    public static int setPermissionRecursive(Path path) throws IOException, InterruptedException {
         String cmdLine = "sudo chmod -R 777 "+path.toString();
-        log.info("exec cmd: "+cmdLine);
+        return execCmdLine(cmdLine);
+
+    }
+
+    public static int deleteDir(String dirName) throws IOException, InterruptedException {
+        String cmdLine = "sudo rm -rf "+dirName;
+        return execCmdLine(cmdLine);
+    }
+
+    public static int execCmdLine(String cmdLine) throws InterruptedException, IOException {
         Process exec = Runtime.getRuntime().exec(cmdLine);
-        int i = exec.waitFor(); 
-        log.info("exec cmd result: "+i);
-//        System.out.println("run reslut: "+i);
-//        Set<PosixFilePermission> perms = PosixFilePermissions.fromString("rwxrwxrwx");
-//        Files.walk(path)
-//                .forEach(p -> {
-//                    try {
-//                        Files.setPosixFilePermissions(p, perms);
-//                    } catch (IOException e) {
-//                        log.error("Set permission error", e);
-//                    }
-//                });
-        log.info("Set permission  recursive to path {}", path);
+        int reuslt = exec.waitFor();
+        log.info("exec: "+cmdLine+" result: "+reuslt);
+        return reuslt;
     }
 
-    public static void setPermissions(Path path) throws IOException {
-        Set<PosixFilePermission> perms = PosixFilePermissions.fromString("rwxrwxrwx");
-        Files.setPosixFilePermissions(path, perms);
 
-    }
+
 
 }

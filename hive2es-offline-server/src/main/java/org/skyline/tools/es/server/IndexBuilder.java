@@ -13,7 +13,6 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.*;
-import java.util.stream.Collectors;
 
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.io.FileUtils;
@@ -71,7 +70,7 @@ public class IndexBuilder {
 
         String hdfsWorkDir = configData.getString("hdfsWorkDir");
         String indexName = configData.getString("indexName");
-        log.info("start build: "+indexName+":"+hdfsWorkDir);
+        log.info("start build: " + indexName + ":" + hdfsWorkDir);
         //TODO no need localstatdir
         Path localStateDir = Paths.get(Utils.mostFreeDir(workDirs), indexName);
         if (downloadAndMergeAllShards(idToShards, hdfsWorkDir, indexName, localStateDir)) {
@@ -110,20 +109,20 @@ public class IndexBuilder {
                                         String hdfsWorkDir,
                                         String indexName, Path localStateDir, Set<String> chosenPaths) {
         log.info("Submit download and merge index task for node [{}]", nodeId);
-        log.info("assion shards: "+shards.size()+":"+shards);
+        log.info("assion shards: " + shards.size() + ":" + shards);
 //        shards.forEach(shardId -> processTaskExecutor.submit(() -> {
         for (String shardId : shards) {
             ///data/data03/es/data/paic-elasticsearch/nodes/0
             ///data/data03/es/data/paic-elasticsearch/nodes/0/indices/stock_20200324/0/index
-            log.info(indexName+":"+shardId+"-"+Integer.getInteger(shardId));
+            log.info(indexName + ":" + shardId + "-" + Integer.getInteger(shardId));
             String dataPath = esClient.getShardDataPath(indexName, new Integer(shardId));
-            log.info("es's data path is: "+dataPath);
+            log.info("es's data path is: " + dataPath);
             // 选择最空闲的一个路径放索引
 //            chosenPaths.add(dataPath);
             log.info("Most free data dir is {}", dataPath);
 
             String srcPath = Paths.get(hdfsWorkDir, indexName, shardId).toString();
-            log.info("hdfs path is: "+srcPath);
+            log.info("hdfs path is: " + srcPath);
             String workDir = Utils.sameDiskDir(workDirs, dataPath);
             String destPath = Paths.get(workDir, indexName, shardId).toString();
             log.info("Chosen tmpwork dir is {}", workDir);
@@ -135,21 +134,18 @@ public class IndexBuilder {
 
                 log.info("Merge index bundle in dir[{}] ", destPath);
                 String finalIndexPath = mergeIndex(destPath);
-                Path localHdfsFile = Paths.get(finalIndexPath).getParent().getParent();
-                if(finalIndexPath.equals("1")){
-                    if (Files.exists(localHdfsFile)){
-                        log.info("localHdfsFile exists and delete it");
-                        Files.delete(localHdfsFile);
-                    }else {
-                        log.info("localHdfsFile don't exists");
-                    }
-                    return ;
+                String localHdfsFile = Paths.get(finalIndexPath).getParent().getParent().toString();
+                if (finalIndexPath.equals("1")) {
+                    log.info("no segfile need deal, finish this node job");
+                    return;
                 }
 //                destPath
                 moveLuceneToESDataDir(indexName, shardId, dataPath, finalIndexPath);
                 //delete tmp dir:custom_test_20191290/29/p_3
-                log.info("delete localHdfsFile");
-                Files.delete(localHdfsFile);
+                log.info("delete localHdfsFile: "+localHdfsFile);
+                if (localHdfsFile.endsWith(indexName)){
+                    Utils.deleteDir(localHdfsFile);
+                }
             } catch (IOException e) {
                 log.error(
                         "Build index bundle from hdfs[" + srcPath + "] failed", e);
@@ -243,17 +239,17 @@ public class IndexBuilder {
 
     //改成之移动lucene文件,并更改lucene的user data
     private void moveLuceneToESDataDir(String indexName, String shardId,
-                                                       String dataPath, String finalIndexPath) throws IOException, InterruptedException {
+                                       String dataPath, String finalIndexPath) throws IOException, InterruptedException {
         // 从临时目录把lucene文件移到es的分片索引目录下面
         //shard中，0/index 这一级移到目录下，名字不用改
-        Path from = Paths.get(finalIndexPath+"/"+INDEX_FILE);
-        Path to = Paths.get(dataPath, "indices", indexName, shardId,INDEX_FILE);
+        Path from = Paths.get(finalIndexPath + "/" + INDEX_FILE);
+        Path to = Paths.get(dataPath, "indices", indexName, shardId, INDEX_FILE);
         //删掉原lucene文件
         Utils.setPermissionRecursive(to.getParent());
         Utils.setPermissionRecursive(from.getParent());
-        File toDir = new File(to.toString());    
+        File toDir = new File(to.toString());
         File[] indexFiles = toDir.listFiles();
-        for(File indexFile: indexFiles){
+        for (File indexFile : indexFiles) {
             indexFile.delete();
 //            if (indexFile.getName().equals("write.lock")){
 //                Files.delete(from.resolve("write.lock"));
@@ -268,7 +264,7 @@ public class IndexBuilder {
         }
         Files.delete(to);
         if (Files.exists(to)) {
-            log.info("file exists,delte failed: "+to.toString());
+            log.info("file exists,delte failed: " + to.toString());
         }
 
         log.info("Move index from {} to {}", from, to);
@@ -278,22 +274,22 @@ public class IndexBuilder {
         //更改segmentsInfo信息
         //TODO:once get null from tlog file, get the es version ,and then --
         //TODO: --use Strings.randomBase64UUID() create .tlog and .ckp file
-        if (getSegInfo(to.getParent().resolve(TRANSLOG_PATH).resolve(TRANSLOG_TLOG_FILE).toString())){
+        if (getSegInfo(to.getParent().resolve(TRANSLOG_PATH).resolve(TRANSLOG_TLOG_FILE).toString())) {
             //set to lucene
             setToLucene(to);
         }
     }
 
-    private boolean getSegInfo(String tlog) throws IOException{
-        log.info("getSeginfo: "+tlog);
+    private boolean getSegInfo(String tlog) throws IOException {
+        log.info("getSeginfo: " + tlog);
         //TODO: ensure no flush
         //appcom/es/data/uat-es/nodes/0/indices/lead/0/translog/translog-1.tlog
         File file = new File(tlog);
         //is file exists
-        while(!file.exists()){
-            try{
+        while (!file.exists()) {
+            try {
                 Thread.sleep(3000);
-            }catch (InterruptedException e){
+            } catch (InterruptedException e) {
                 e.printStackTrace();
             }
             log.info("translog file don't exists, wait 3s");
@@ -303,15 +299,15 @@ public class IndexBuilder {
         log.info(file.getPath().toString());
         byte[] bytes = new byte[1024];
         fileInputStream.read(bytes);
-        String uuid = new String(bytes,20,43).trim();
-        log.info("uuid: "+uuid);
+        String uuid = new String(bytes, 20, 43).trim();
+        log.info("uuid: " + uuid);
         TLOG_UUID = uuid;
-        log.info("get tlog file: "+tlog+" uuid: "+TLOG_UUID);
+        log.info("get tlog file: " + tlog + " uuid: " + TLOG_UUID);
         return true;
     }
 
-    private void setToLucene(Path segPath){
-        log.info("set to lucene: "+segPath);
+    private void setToLucene(Path segPath) {
+        log.info("set to lucene: " + segPath);
         try {
             FSDirectory directory = FSDirectory.open(segPath);
             SegmentInfos segmentInfos = SegmentInfos.readLatestCommit(directory);
@@ -327,11 +323,11 @@ public class IndexBuilder {
             commit.setAccessible(true);
             commit.invoke(segmentInfos, directory);
 
-            log.info("set userData: "+segmentInfos.getUserData());
+            log.info("set userData: " + segmentInfos.getUserData());
 
             Utils.setPermissionRecursive(segPath.getParent());
-            Utils.chownDire(segPath.getParent().toString(),"elasticsearch");
-        }catch (Exception e){
+            Utils.chownDire(segPath.getParent().toString(), "elasticsearch");
+        } catch (Exception e) {
             e.printStackTrace();
         }
     }
@@ -373,20 +369,20 @@ public class IndexBuilder {
      */
     private synchronized String mergeIndex(String indexBundlePath) throws IOException {
         File parentFile = new File(indexBundlePath);
-        log.info("get parentFile suceecss:"+parentFile.getAbsolutePath()+"-"+indexBundlePath);
+        log.info("get parentFile suceecss:" + parentFile.getAbsolutePath() + "-" + indexBundlePath);
         File[] containFiles = parentFile.listFiles();
-        log.info("num of files "+ containFiles.length);
-        if(containFiles.length == 0){
+        log.info("num of files " + containFiles.length);
+        if (containFiles.length == 0) {
             return "1";
         }
         List<Path> indexList = new ArrayList<>();
-        for(File shardFile : containFiles){
-            log.info("shardFile: "+shardFile);
-            if(shardFile.isDirectory()){
+        for (File shardFile : containFiles) {
+            log.info("shardFile: " + shardFile);
+            if (shardFile.isDirectory()) {
                 indexList.add(shardFile.toPath());
             }
         }
-        log.info("indexList: "+indexList+" size: "+indexList.size());
+        log.info("indexList: " + indexList + " size: " + indexList.size());
         Collections.sort(indexList);
         try (
                 FSDirectory directory = FSDirectory.open(indexList.get(0).resolve("index"))
