@@ -7,7 +7,9 @@ import org.apache.commons.logging.LogFactory
 import org.elasticsearch.client.transport.TransportClient
 import org.elasticsearch.common.settings.Settings
 import org.elasticsearch.common.transport.InetSocketTransportAddress
-
+import org.elasticsearch.client.transport.TransportClient
+import org.elasticsearch.common.transport.InetSocketTransportAddress
+import java.net.InetAddress
 //spark driver使用的es client
 class ESClusterClient(val indexName: String,val shardsNum: Int,val typeName:String) {
 
@@ -21,11 +23,13 @@ class ESClusterClient(val indexName: String,val shardsNum: Int,val typeName:Stri
       .build
 
 
-    val node1 = new InetSocketTransportAddress(new InetSocketAddress("cnsz033457", 9400))
-    val node3 = new InetSocketTransportAddress(new InetSocketAddress("26.6.0.90", 9300))
-    val node2 = new InetSocketTransportAddress(new InetSocketAddress("26.6.0.91", 9300))
-    val node4 = new InetSocketTransportAddress(new InetSocketAddress("26.6.0.91", 9400))
-    val client: TransportClient = TransportClient.builder().build().addTransportAddresses(node1, node2,node3,node4)
+
+    val client = TransportClient.builder.build
+      .addTransportAddress(new InetSocketTransportAddress(InetAddress.getByName("26.6.0.90"), 9300))
+      .addTransportAddress(new InetSocketTransportAddress(InetAddress.getByName("26.6.0.90"), 9400))
+      .addTransportAddress(new InetSocketTransportAddress(InetAddress.getByName("26.6.0.91"), 9300))
+      .addTransportAddress(new InetSocketTransportAddress(InetAddress.getByName("26.6.0.90"), 9400))
+
     val createRespon: Boolean = client.admin().indices().prepareCreate(indexName).setSettings(settings).get().isAcknowledged()
     return createRespon
   }
