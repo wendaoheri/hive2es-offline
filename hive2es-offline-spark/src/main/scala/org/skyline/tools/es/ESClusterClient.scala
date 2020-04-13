@@ -21,9 +21,11 @@ class ESClusterClient(val indexName: String,val shardsNum: Int,val typeName:Stri
       .build
 
 
-    val node1 = new InetSocketTransportAddress(new InetSocketAddress("26.6.0.90", 9300))
-    val node2 = new InetSocketTransportAddress(new InetSocketAddress("26.6.0.90", 9300))
-    val client: TransportClient = TransportClient.builder().build().addTransportAddresses(node1, node2)
+    val node1 = new InetSocketTransportAddress(new InetSocketAddress("cnsz033457", 9400))
+    val node3 = new InetSocketTransportAddress(new InetSocketAddress("26.6.0.90", 9300))
+    val node2 = new InetSocketTransportAddress(new InetSocketAddress("26.6.0.91", 9300))
+    val node4 = new InetSocketTransportAddress(new InetSocketAddress("26.6.0.91", 9400))
+    val client: TransportClient = TransportClient.builder().build().addTransportAddresses(node1, node2,node3,node4)
     val createRespon: Boolean = client.admin().indices().prepareCreate(indexName).setSettings(settings).get().isAcknowledged()
     return createRespon
   }
