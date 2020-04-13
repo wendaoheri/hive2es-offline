@@ -13,11 +13,10 @@ class ESClusterClient(val indexName: String,val shardsNum: Int,val typeName:Stri
 
   @transient private lazy val log = LogFactory.getLog(getClass)
 
-  val node1 = new InetSocketTransportAddress(InetAddress.getByName("26.6.0.90"), 9400)
-  val node2 = new InetSocketTransportAddress(InetAddress.getByName("26.6.0.91"), 9400)
-  private val client: TransportClient = TransportClient.builder().build().addTransportAddresses(node1, node2)
-
   def createIndex(): Boolean = {
+    val node1 = new InetSocketTransportAddress(InetAddress.getByName("26.6.0.90"), 9400)
+    val node2 = new InetSocketTransportAddress(InetAddress.getByName("26.6.0.91"), 9400)
+    private val client: TransportClient = TransportClient.builder().build().addTransportAddresses(node1, node2)
     val createRespon: Boolean = client.admin().indices().prepareCreate(indexName).setSettings((
       s"""
          |{
@@ -51,6 +50,9 @@ class ESClusterClient(val indexName: String,val shardsNum: Int,val typeName:Stri
   }
 
   def putMapping2ESClusterIndex(mapping: JSONObject): Boolean = {
+    val node1 = new InetSocketTransportAddress(InetAddress.getByName("26.6.0.90"), 9400)
+    val node2 = new InetSocketTransportAddress(InetAddress.getByName("26.6.0.91"), 9400)
+    private val client: TransportClient = TransportClient.builder().build().addTransportAddresses(node1, node2)
     log.info("put mapping start")
     val root = new JSONObject()
     root.put("properties", mapping)
