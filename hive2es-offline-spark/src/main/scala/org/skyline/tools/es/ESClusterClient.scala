@@ -1,6 +1,6 @@
 package org.skyline.tools.es
 
-import java.net.InetAddress
+import java.net.{InetAddress, InetSocketAddress}
 
 import com.alibaba.fastjson.JSONObject
 import org.apache.commons.logging.LogFactory
@@ -14,38 +14,17 @@ class ESClusterClient(val indexName: String,val shardsNum: Int,val typeName:Stri
   @transient private lazy val log = LogFactory.getLog(getClass)
 
   def createIndex(): Boolean = {
-    val node1 = new InetSocketTransportAddress(InetAddress.getByName("26.6.0.90"), 9400)
-    val node2 = new InetSocketTransportAddress(InetAddress.getByName("26.6.0.91"), 9400)
+    val settings = Settings.builder
+      .put("number_of_replicas", 0)
+      .put("number_of_shards", shardsNum)
+      .put("cluster.name","paic-elasticsearch")
+      .build
+
+
+    val node1 = new InetSocketTransportAddress(new InetSocketAddress("26.6.0.90", 9300))
+    val node2 = new InetSocketTransportAddress(new InetSocketAddress("26.6.0.90", 9300))
     val client: TransportClient = TransportClient.builder().build().addTransportAddresses(node1, node2)
-    val createRespon: Boolean = client.admin().indices().prepareCreate(indexName).setSettings((
-      s"""
-         |{
-         |    "index": {
-         |        "number_of_replicas": "0",
-         |        "refresh_interval": "-1",
-         |        "number_of_shards": "${shardsNum}",
-         |        "merge": {
-         |          "scheduler": {
-         |            "max_thread_count": "4",
-         |            "auto_throttle": "false"
-         |          },
-         |          "policy": {
-         |            "max_merged_segment": "2mb"
-         |          }
-         |        },
-         |        "translog":{
-         |          "flush_threshold_size": "10gb",
-         |          "durability": "async",
-         |          "sync_interval": "10m"
-         |        },
-         |        "routing":{
-         |          "allocation":{
-         |            "disable_allocation":"true"
-         |          }
-         |        }
-         |    }
-         |}
-         """.stripMargin)).get().isAcknowledged()
+    val createRespon: Boolean = client.admin().indices().prepareCreate(indexName).setSettings(settings).get().isAcknowledged()
     return createRespon
   }
 
