@@ -152,23 +152,18 @@ public class HdfsClient {
 
     public String readMappingJson(String filePath) throws IOException {
         Path mapPath = new Path(filePath);
-        Path localpath = new Path("mappings111.json");
+        Path localpath = new Path("mappings.json");
+        java.nio.file.Path path = Paths.get("mappings.json");
+        if (Files.exists(path)){
+            Files.delete(path);
+        }
         fs.copyToLocalFile(mapPath,localpath);
-        String mappingStr1111 = new String(Files.readAllBytes(Paths.get("mapping.json")));
-        log.info(mappingStr1111.length()+"");
-        //获取文件内容
-        log.info("read mapping file: "+filePath);
-
-        FSDataInputStream in = fs.open(mapPath);
-
-        FileOutputStream out = new FileOutputStream("mapping.json");
-        java.nio.file.Path localPath = Paths.get("mapping.json");
-
-        IOUtils.copy(in,out);
         String mappingStr = new String(Files.readAllBytes(Paths.get("mapping.json")));
-        log.info(mappingStr);
-//        Files.delete(localPath);
-
+        log.info(mappingStr.length()+"");
+        //获取文件内容
+        if (Files.exists(path)){
+            Files.delete(path);
+        }
         return mappingStr;
     }
 
