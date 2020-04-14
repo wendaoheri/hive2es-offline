@@ -67,10 +67,11 @@ class ServerNotifier(config: Config) {
 
   def update(path: String, value: String): Unit = {
     log.info("Update zk path [{}] value [{}]", path, value)
-    client.transaction
-      .forOperations(
-        client.transactionOp.check.forPath(path),
-        client.transactionOp.setData.forPath(path, value.getBytes(Charsets.UTF_8))
-      )
+//    client.transaction
+//      .forOperations(
+//        client.transactionOp.check.forPath(path),
+//        client.transactionOp.setData.forPath(path, value.getBytes(Charsets.UTF_8))
+//      )
+    client.setData().forPath(path, value.getBytes(Charsets.UTF_8))
   }
 }
