@@ -160,12 +160,12 @@ public class HdfsClient {
         InputStreamReader is = new InputStreamReader(open);
         BufferedReader br = new BufferedReader(is);
 
-        StringBuilder sb = new StringBuilder();
         String tmpline = "";
+        String mappingStr = "";
         while ((tmpline=br.readLine())!=null){
-            sb.append(tmpline);
+            mappingStr += tmpline;
         }
-        return sb.toString();
+        return mappingStr;
     }
 
 
