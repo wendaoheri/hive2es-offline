@@ -155,9 +155,11 @@ public class HdfsClient {
     }
 
     public String readMappingJson(String filePath) throws IOException {
+        //获取文件内容
         log.info("read mapping file: "+filePath);
         Path mapPath = new Path(filePath);
         FSDataInputStream open = fs.open(mapPath);
+        log.info(fs.isFile(mapPath)+":"+fs.isDirectory(mapPath));
 
         byte[] b = new byte[8192];
         StringBuilder sb = new StringBuilder();
@@ -165,7 +167,8 @@ public class HdfsClient {
         int readResult = 0;
 
         while (true){
-            int read = open.read(b);
+
+            int read = IOUtils.read(open, b);
             if (read == -1){
                 String mappingString = sb.toString();
                 log.info("mapping string append end: "+mappingString);
