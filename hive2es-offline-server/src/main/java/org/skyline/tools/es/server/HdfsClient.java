@@ -163,7 +163,6 @@ public class HdfsClient {
         StringBuilder sb = new StringBuilder();
         String tmpline = "";
         while ((tmpline=br.readLine())!=null){
-            log.info(tmpline);
             sb.append(tmpline);
         }
         return sb.toString();
