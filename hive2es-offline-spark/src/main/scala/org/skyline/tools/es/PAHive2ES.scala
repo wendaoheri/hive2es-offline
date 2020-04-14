@@ -150,7 +150,7 @@ object PAHive2ES {
 
     Files.write(Paths.get("mapping.json"), mappingObj.toString().getBytes)
     CompressionUtils.upload2HDFS(Paths.get("mapping.json").toString
-      ,Paths.get(config.hdfsWorkDir).resolve(config.indexName).toString )
+      ,Paths.get(config.hdfsWorkDir).resolve(config.indexName).resolve("mapping.json").toString )
     val mappingString = new String(Files.readAllBytes(Paths.get("mapping.json")))
     Files.delete(Paths.get("mapping.json"))
     log.info(mappingString)

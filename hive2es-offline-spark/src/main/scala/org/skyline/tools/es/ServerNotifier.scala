@@ -25,7 +25,7 @@ class ServerNotifier(config: Config) {
          |  "numberShards" : ${config.numShards},
          |  "hdfsWorkDir" : "${config.hdfsWorkDir}",
          |  "indexName" : "$indexName",
-         |  "typeName" : ${config.typeName},
+         |  "typeName" : "${config.typeName}",
          |  "state" : "started"
          |}
        """.stripMargin).toString
@@ -40,6 +40,7 @@ class ServerNotifier(config: Config) {
          |  "numberShards" : ${config.numShards},
          |  "hdfsWorkDir" : "${config.hdfsWorkDir}",
          |  "indexName" : "$indexName",
+         |  "typeName" : "${config.typeName}",
          |  "state" : "completed"
          |}
        """.stripMargin).toString
