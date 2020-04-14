@@ -194,12 +194,11 @@ public class NodeService {
         //add mapping
         try {
             // tmp/es/custom_201912184/mapping.json
-            hdfsClient.readMappingJson(Paths
+            String mappingString = hdfsClient.readMappingJson(Paths
                     .get(configData.getString("hdfsWorkDir"))
                     .resolve(configData.getString("indexName"))
                     .resolve("mapping.json")
                     .toString());
-            String mappingString = new String(Files.readAllBytes(Paths.get("mapping.json")));
             esClient.putMapping(JSON.parseObject(mappingString),indexName,configData.getString("typeName"));
         } catch (IOException e) {
             e.printStackTrace();

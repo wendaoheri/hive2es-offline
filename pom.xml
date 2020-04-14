@@ -16,7 +16,7 @@
     <scala.version>2.11.8</scala.version>
     <scala.major.version>2.11</scala.major.version>
     <spark.version>2.3.0</spark.version>
-    <fastjson.version>1.2.29.sec06</fastjson.version>
+    <fastjson.version>1.2.68</fastjson.version>
     <scopt.version>3.7.0</scopt.version>
     <elasticsearch.version>2.3.2</elasticsearch.version>
     <commons.compress.version>1.19</commons.compress.version>
