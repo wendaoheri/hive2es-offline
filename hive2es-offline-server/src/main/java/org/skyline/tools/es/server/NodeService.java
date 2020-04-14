@@ -49,6 +49,9 @@ public class NodeService {
     private ESClient esClient;
 
     @Autowired
+    private HdfsClient hdfsClient;
+
+    @Autowired
     private IndexBuilder indexBuilder;
 
     private volatile boolean started = false;
@@ -190,6 +193,12 @@ public class NodeService {
         log.info("create index finished: "+indexName+"---"+"--"+numberShards);
         //add mapping
         try {
+            // tmp/es/custom_201912184/mapping.json
+            hdfsClient.readMappingJson(Paths
+                    .get(configData.getString("hdfsWorkDir"))
+                    .resolve(configData.getString("indexName"))
+                    .resolve("mapping.json")
+                    .toString());
             String mappingString = new String(Files.readAllBytes(Paths.get("mapping.json")));
             esClient.putMapping(JSON.parseObject(mappingString),indexName,configData.getString("typeName"));
         } catch (IOException e) {
