@@ -2,11 +2,7 @@ package org.skyline.tools.es.server;
 
 import com.google.common.collect.Lists;
 
-import java.io.BufferedOutputStream;
-import java.io.File;
-import java.io.FileNotFoundException;
-import java.io.IOException;
-import java.io.OutputStream;
+import java.io.*;
 import java.nio.charset.Charset;
 import java.nio.file.Files;
 import java.nio.file.Paths;
@@ -161,21 +157,16 @@ public class HdfsClient {
         FSDataInputStream open = fs.open(mapPath);
         log.info(fs.isFile(mapPath)+":"+fs.isDirectory(mapPath));
 
-        byte[] b = new byte[8192];
+        InputStreamReader is = new InputStreamReader(open);
+        BufferedReader br = new BufferedReader(is);
+
         StringBuilder sb = new StringBuilder();
-        String mapping ="";
-        int readResult = 0;
-
-        while (true){
-
-            int read = IOUtils.read(open, b);
-            if (read == -1){
-                String mappingString = sb.toString();
-                log.info("mapping string append end: "+mappingString);
-                return mappingString;
-            }
-            sb.append(new String(b,0,readResult, Charset.forName("UTF-8")));
+        String tmpline = "";
+        while ((tmpline=br.readLine())!=null){
+            log.info(tmpline);
+            sb.append(tmpline);
         }
+        return sb.toString();
     }
 
 
