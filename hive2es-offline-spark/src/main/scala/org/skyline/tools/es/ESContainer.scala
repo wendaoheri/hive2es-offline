@@ -239,7 +239,7 @@ class ESContainer(val config: Config, val partitionId: Int) {
     log.info("close node end")
   }
 
-  private def uploadToHdfs(src: Path, dest: Path): Unit = {
+  def uploadToHdfs(src: Path, dest: Path): Unit = {
     if (!fs.exists(new org.apache.hadoop.fs.Path(dest.getParent.toString))) {
       log.info(s"hdfs path ${dest.getParent} not exist and create it")
       fs.mkdirs(new org.apache.hadoop.fs.Path(dest.getParent.toString))

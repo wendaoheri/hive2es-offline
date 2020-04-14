@@ -1,5 +1,6 @@
 package org.skyline.tools.es.server;
 
+import com.alibaba.fastjson.JSONObject;
 import com.carrotsearch.hppc.cursors.IntCursor;
 import com.google.common.collect.Maps;
 
@@ -8,6 +9,7 @@ import java.net.UnknownHostException;
 import java.util.*;
 
 import lombok.extern.slf4j.Slf4j;
+import lombok.val;
 import org.apache.commons.compress.utils.Lists;
 import org.elasticsearch.action.admin.cluster.node.info.NodeInfo;
 import org.elasticsearch.action.admin.cluster.node.info.NodesInfoResponse;
@@ -123,6 +125,20 @@ public class ESClient {
         }
         return shardDataPath;
     }
+
+    public void putMapping(JSONObject mapping,String indexName,String typeName){
+        log.info("put mapping start");
+        JSONObject root = new JSONObject();
+        root.put("properties", mapping);
+
+        JSONObject disabled = new JSONObject();
+        disabled.put("enabled", false);
+        root.put("_all", disabled);
+
+        client.admin().indices().preparePutMapping(indexName).setType(typeName).setSource(root).execute().actionGet();
+        log.info("put mapping end");
+    }
+
     //**************  change1 end **************************************
 
     public Set<String> getNodeNameOnHost() {

@@ -6,6 +6,8 @@ import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 
 import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 import java.util.*;
 import java.util.stream.Collectors;
 import javax.annotation.PostConstruct;
@@ -186,6 +188,13 @@ public class NodeService {
         int numberShards = configData.getInteger("numberShards");
         esClient.createIndexFirst(indexName,0,numberShards);
         log.info("create index finished: "+indexName+"---"+"--"+numberShards);
+        //add mapping
+        try {
+            String mappingString = new String(Files.readAllBytes(Paths.get("mapping.json")));
+            esClient.putMapping(JSON.parseObject(mappingString),indexName,configData.getString("typeName"));
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
 
 //        stsz030282 : [SOnMwP-vRlKiOqiNA_1p1w, Tbj6H9K0Q_SqgQMTW8CrKA]
         Map<String, String[]> allNodes = this.getAllRegisteredNode();

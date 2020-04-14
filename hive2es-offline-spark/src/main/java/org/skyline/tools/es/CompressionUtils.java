@@ -10,6 +10,7 @@ import java.io.*;
 import java.nio.file.Files;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FSDataOutputStream;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
@@ -22,6 +23,27 @@ import org.apache.hadoop.fs.Path;
 public class CompressionUtils {
 
   private static Log log = LogFactory.getLog(CompressionUtils.class);
+
+
+  public static void upload2HDFS(String from,String to){
+    try {
+      FileInputStream fileInputStream = new FileInputStream(from);
+      BufferedInputStream in = new BufferedInputStream(fileInputStream);
+
+      // /tmp/es/custom_test_20191215
+      Path toPath = new Path(to);
+      FileSystem fileSystem = FileSystem.get(new Configuration());
+      if (!fileSystem.exists(toPath.getParent())) {
+        log.info(String.format("hdfs path %s not exist and create it", toPath.getParent()));
+        fileSystem.mkdirs(toPath.getParent());
+      }
+      FSDataOutputStream out = fileSystem.create(toPath);
+      IOUtils.copy(in,out);
+    } catch (IOException e) {
+      e.printStackTrace();
+    }
+
+  }
 
   public static void zipAndUpload(String from, String to, String rootDirName, FileSystem fs)
       throws IOException {

@@ -148,30 +148,14 @@ object PAHive2ES {
 
     val mappingObj = JSON.toJSON(mapping).asInstanceOf[JSONObject]
 
-
     Files.write(Paths.get("mapping.json"), mappingObj.toString().getBytes)
-    //TODO 这里是driver还是worker读
+    CompressionUtils.upload2HDFS(Paths.get("mapping.json").toString
+      ,Paths.get(config.hdfsWorkDir).resolve(config.indexName).toString )
     val mappingString = new String(Files.readAllBytes(Paths.get("mapping.json")))
     Files.delete(Paths.get("mapping.json"))
     log.info(mappingString)
 
     val serverNotifier = new ServerNotifier(config)
-    //建立es中索引  val indexName: String,val shardsNum: Int,val typeName:String
-    val esClusterClient =  new ESClusterClient(config.indexName,config.numShards,config.typeName)
-    val createIndexResult:Boolean = esClusterClient.createIndex()
-    if (!createIndexResult){
-      log.warn("create index failed, end application")
-      return ;
-    }
-    log.info("create index: "+config.indexName+" success")
-    val putMappingResult:Boolean = esClusterClient.putMapping2ESClusterIndex(JSON.parseObject(mappingString))
-    if (!putMappingResult){
-      log.warn("***********************************")
-      log.warn("put index mapping failed!!")
-      log.warn("***********************************")
-    } else {
-      log.info("put index mapping success!")
-    }
     serverNotifier.startIndex()
 
     def notNullValue(value: Object): Boolean = {
