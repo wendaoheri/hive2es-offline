@@ -57,7 +57,8 @@ class ServerNotifier(config: Config) {
   def persist(path: String, value: String): Unit = {
     log.info("Persist zk path [{}] value [{}]", path, value)
     if (!isExisted(path)) {
-      client.create.creatingParentsIfNeeded.withMode(CreateMode.PERSISTENT).forPath(path, value.getBytes(Charsets.UTF_8))
+//      client.create.creatingParentsIfNeeded.withMode(CreateMode.PERSISTENT).forPath(path, value.getBytes(Charsets.UTF_8))
+      client.create.withMode(CreateMode.PERSISTENT).forPath(path, value.getBytes(Charsets.UTF_8))
     }
     else {
       update(path, value)
