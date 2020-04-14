@@ -199,7 +199,7 @@ public class NodeService {
                     .resolve(configData.getString("indexName"))
                     .resolve("mapping.json")
                     .toString());
-            log.info(mappingString);
+            log.info(mappingString.length()+"");
             esClient.putMapping(JSON.parseObject(mappingString),indexName,configData.getString("typeName"));
         } catch (IOException e) {
             e.printStackTrace();
