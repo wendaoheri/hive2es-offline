@@ -154,17 +154,18 @@ public class HdfsClient {
         //获取文件内容
         log.info("read mapping file: "+filePath);
         Path mapPath = new Path(filePath);
-        FSDataInputStream open = fs.open(mapPath);
-        log.info(fs.isFile(mapPath)+":"+fs.isDirectory(mapPath));
+        FSDataInputStream in = fs.open(mapPath);
 
-        InputStreamReader is = new InputStreamReader(open);
-        BufferedReader br = new BufferedReader(is);
-
-        String tmpline = "";
-        String mappingStr = "";
-        while ((tmpline=br.readLine())!=null){
-            mappingStr += tmpline;
+        FileOutputStream out = new FileOutputStream("mapping.json");
+        java.nio.file.Path localPath = Paths.get("mapping.json");
+        if (Files.exists(localPath)){
+            Files.delete(localPath);
         }
+        IOUtils.copy(in,out);
+        String mappingStr = new String(Files.readAllBytes(Paths.get("mapping.json")));
+
+        Files.delete(localPath);
+
         return mappingStr;
     }
 
