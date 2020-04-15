@@ -106,17 +106,11 @@ public class NodeService {
             }
 
             if (leaderSelectorController.hasLeadership()) {
-                try {
-                    assignShards(configData, indexPath);
-                } catch (IOException e) {
-                    e.printStackTrace();
-                } catch (InterruptedException e) {
-                    e.printStackTrace();
-                }
+                assignShards(configData, indexPath);
                 registryCenter.persist(indexPath + "/" + ASSIGN_FLAG, "");
             }
             Map<String, List<String>> currentNodeShards = getCurrentNodeShards(indexPath, indexNodePath);
-            log.info("id2Shards: "+currentNodeShards);
+            log.info("id2Shards: " + currentNodeShards);
             if (MapUtils.isNotEmpty(currentNodeShards)) {
                 log.info("Current node shards is : {}", currentNodeShards);
                 if (MapUtils.isNotEmpty(currentNodeShards)) {
@@ -190,22 +184,29 @@ public class NodeService {
 
     }
 
-    private void assignShards(JSONObject configData, String indexPath) throws IOException, InterruptedException {
+    private void assignShards(JSONObject configData, String indexPath) {
         log.info("Start assign shard");
         log.info("version 3");
         String indexName = configData.getString("indexName");
         int numberShards = configData.getInteger("numberShards");
-        esClient.createIndexFirst(indexName,0,numberShards);
-        log.info("create index finished: "+indexName+"---"+"--"+numberShards);
+        esClient.createIndexFirst(indexName, 0, numberShards);
+        log.info("create index finished: " + indexName + "---" + "--" + numberShards);
         //add mapping
-            // tmp/es/custom_201912184/mapping.json
-            String mappingString = hdfsClient.readMappingJson(Paths
+        // tmp/es/custom_201912184/mapping.json
+        String mappingString = null;
+        try {
+            mappingString = hdfsClient.readMappingJson(Paths
                     .get(configData.getString("hdfsWorkDir"))
                     .resolve(configData.getString("indexName"))
                     .resolve("mapping.json")
                     .toString());
-            log.info(mappingString.length()+"");
-            esClient.putMapping(JSON.parseObject(mappingString),indexName,configData.getString("typeName"));
+        } catch (IOException e) {
+            e.printStackTrace();
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+        log.info(mappingString.length() + "");
+        esClient.putMapping(JSON.parseObject(mappingString), indexName, configData.getString("typeName"));
 
 
 //        stsz030282 : [SOnMwP-vRlKiOqiNA_1p1w, Tbj6H9K0Q_SqgQMTW8CrKA]
@@ -224,7 +225,7 @@ public class NodeService {
         //only solve server node down but es node is alive
         //when es node down but server node alive is ok
         Map<Integer, String> nodesShards = esClient.getNodesShards(indexName);
-        log.info("es cluster first asssion shard distribution: "+nodesShards);
+        log.info("es cluster first asssion shard distribution: " + nodesShards);
         for (Map.Entry<Integer, String> node2ShardsInEsCluster : nodesShards.entrySet()) {
             Integer sharId = node2ShardsInEsCluster.getKey();
             String clusterNodeId = node2ShardsInEsCluster.getValue();
@@ -235,7 +236,7 @@ public class NodeService {
                 relocationShards.put(sharId, clusterNodeId);
             }
         }
-        log.info("can't assign shard list: "+relocationShards);
+        log.info("can't assign shard list: " + relocationShards);
         for (Map.Entry<Integer, String> relocationShard : relocationShards.entrySet()) {
             Integer shardId = relocationShard.getKey();
             String oldNodeId = relocationShard.getValue();
@@ -243,18 +244,18 @@ public class NodeService {
             for (String newNodeId : ids) {
                 if (ids.indexOf(newNodeId) == ids.lastIndexOf(newNodeId)) {
                     boolean moveResult = esClient.relocationShards(indexName, shardId, oldNodeId, newNodeId);
-                    if (moveResult){
-                        log.info("move shard [" + shardId  + "] from [" + oldNodeId  + "] to [" + newNodeId + "] success");
-                        ids.add(shardId,newNodeId);
+                    if (moveResult) {
+                        log.info("move shard [" + shardId + "] from [" + oldNodeId + "] to [" + newNodeId + "] success");
+                        ids.add(shardId, newNodeId);
                         break;
-                    }else {
-                        log.info("move shard [" + shardId  + "] from [" + oldNodeId  + "] to [" + newNodeId + "] fail, move it to next node");
+                    } else {
+                        log.info("move shard [" + shardId + "] from [" + oldNodeId + "] to [" + newNodeId + "] fail, move it to next node");
                     }
                 }
             }
         }
         log.info("ES cluster final node and shard route is : {}", ids);
-        log.info("Node to ES node is : {}",allNodes);
+        log.info("Node to ES node is : {}", allNodes);
         //一台机器写一次ZK， 格式：{esclustNodeId1:[shardid1,shardid2],esclustNodeId2:[shardid1,shardid2]},hostid
         //x:stsz030282-[SOnMwP-vRlKiOqiNA_1p1w, Tbj6H9K0Q_SqgQMTW8CrKA]
         //注意keyName
@@ -272,11 +273,11 @@ public class NodeService {
             for (Map.Entry<Integer, String> shardNode : newNodesShards.entrySet()) {
                 String clusternodeId = shardNode.getValue();
                 //这台机器上的节点
-                if (clustNodeIdList.contains(clusternodeId)){
+                if (clustNodeIdList.contains(clusternodeId)) {
                     List<Integer> shards = idToShards.get(clusternodeId);
-                    if (shards == null){
+                    if (shards == null) {
                         shards = new ArrayList<>();
-                        idToShards.put(clusternodeId,shards);
+                        idToShards.put(clusternodeId, shards);
                     }
                     shards.add(shardNode.getKey());
                 }
