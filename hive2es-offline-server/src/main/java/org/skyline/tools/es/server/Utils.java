@@ -149,7 +149,7 @@ public class Utils {
     }
 
     public static int downloadHdfsFile(String path) throws IOException, InterruptedException {
-        String cmdLine = "hdfs dsf -get "+path;
+        String cmdLine = "hdfs dfs -get "+path;
         return execCmdLine(cmdLine);
     }
 

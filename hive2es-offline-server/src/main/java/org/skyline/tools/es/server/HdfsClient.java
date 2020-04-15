@@ -152,10 +152,13 @@ public class HdfsClient {
 
     public String readMappingJson(String filePath) throws IOException, InterruptedException {
         int i = Utils.downloadHdfsFile(filePath);
+        log.info("download file finished");
         FileInputStream fileInputStream = new FileInputStream("mappings.json");
+        log.info("file input stream");
         InputStreamReader inputStreamReader = new InputStreamReader(fileInputStream);
+        log.info("input reader");
         BufferedReader bufferedReader = new BufferedReader(inputStreamReader);
-
+        log.info("buffer reader");
         String mappingStr = bufferedReader.readLine();
         log.info(mappingStr);
 
