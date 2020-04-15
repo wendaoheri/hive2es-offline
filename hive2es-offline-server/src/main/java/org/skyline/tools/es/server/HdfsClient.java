@@ -150,21 +150,30 @@ public class HdfsClient {
         return path;
     }
 
-    public String readMappingJson(String filePath) throws IOException {
-        Path mapPath = new Path(filePath);
-        Path localpath = new Path("mappings.json");
-        java.nio.file.Path path = Paths.get("mappings.json");
-        if (Files.exists(path)){
-            Files.delete(path);
-        }
-        fs.copyToLocalFile(mapPath,localpath);
-        String mappingStr = new String(Files.readAllBytes(Paths.get("mapping.json")));
-        log.info(mappingStr.length()+"");
-        //获取文件内容
-        if (Files.exists(path)){
-            Files.delete(path);
-        }
+    public String readMappingJson(String filePath) throws IOException, InterruptedException {
+        int i = Utils.downloadHdfsFile(filePath);
+        FileInputStream fileInputStream = new FileInputStream("mappings.json");
+        InputStreamReader inputStreamReader = new InputStreamReader(fileInputStream);
+        BufferedReader bufferedReader = new BufferedReader(inputStreamReader);
+
+        String mappingStr = bufferedReader.readLine();
+        log.info(mappingStr);
+
         return mappingStr;
+//        Path mapPath = new Path(filePath);
+//        Path localpath = new Path("mappings.json");
+//        java.nio.file.Path path = Paths.get("mappings.json");
+//        if (Files.exists(path)){
+//            Files.delete(path);
+//        }
+//        fs.copyToLocalFile(mapPath,localpath);
+//        String mappingStr = new String(Files.readAllBytes(Paths.get("mapping.json")));
+//        log.info(mappingStr.length()+"");
+//        //获取文件内容
+//        if (Files.exists(path)){
+//            Files.delete(path);
+//        }
+//        return mappingStr;
     }
 
 

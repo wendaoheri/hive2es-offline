@@ -106,7 +106,13 @@ public class NodeService {
             }
 
             if (leaderSelectorController.hasLeadership()) {
-                assignShards(configData, indexPath);
+                try {
+                    assignShards(configData, indexPath);
+                } catch (IOException e) {
+                    e.printStackTrace();
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                }
                 registryCenter.persist(indexPath + "/" + ASSIGN_FLAG, "");
             }
             Map<String, List<String>> currentNodeShards = getCurrentNodeShards(indexPath, indexNodePath);
@@ -184,7 +190,7 @@ public class NodeService {
 
     }
 
-    private void assignShards(JSONObject configData, String indexPath) {
+    private void assignShards(JSONObject configData, String indexPath) throws IOException, InterruptedException {
         log.info("Start assign shard");
         log.info("version 3");
         String indexName = configData.getString("indexName");
@@ -192,7 +198,6 @@ public class NodeService {
         esClient.createIndexFirst(indexName,0,numberShards);
         log.info("create index finished: "+indexName+"---"+"--"+numberShards);
         //add mapping
-        try {
             // tmp/es/custom_201912184/mapping.json
             String mappingString = hdfsClient.readMappingJson(Paths
                     .get(configData.getString("hdfsWorkDir"))
@@ -201,9 +206,7 @@ public class NodeService {
                     .toString());
             log.info(mappingString.length()+"");
             esClient.putMapping(JSON.parseObject(mappingString),indexName,configData.getString("typeName"));
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
+
 
 //        stsz030282 : [SOnMwP-vRlKiOqiNA_1p1w, Tbj6H9K0Q_SqgQMTW8CrKA]
         Map<String, String[]> allNodes = this.getAllRegisteredNode();

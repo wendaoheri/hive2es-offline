@@ -39,6 +39,9 @@ public class CompressionUtils {
       }
       FSDataOutputStream out = fileSystem.create(toPath);
       IOUtils.copy(in,out);
+      in.close();
+      out.hflush();
+      out.close();
     } catch (IOException e) {
       e.printStackTrace();
     }

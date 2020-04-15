@@ -148,6 +148,11 @@ public class Utils {
 
     }
 
+    public static int downloadHdfsFile(String path) throws IOException, InterruptedException {
+        String cmdLine = "hdfs dsf -get "+path;
+        return execCmdLine(cmdLine);
+    }
+
     public static int deleteDir(String dirName) throws IOException, InterruptedException {
         String cmdLine = "sudo rm -rf "+dirName;
         return execCmdLine(cmdLine);
