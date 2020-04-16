@@ -89,13 +89,11 @@ public class IndexBuilder {
 
     private boolean downloadAndMergeAllShards(Map<String, List<String>> idToShards,
                                               String hdfsWorkDir, String indexName, Path localStateDir) {
-        Set<String> chosenPaths = Sets.newConcurrentHashSet();
-        int shardNum = idToShards.values().stream().mapToInt(x -> x.size()).sum();
 //        CountDownLatch allShardsLatch = new CountDownLatch(shardNum);
         idToShards.entrySet().forEach(entry -> {
             String nodeId = entry.getKey();
             List<String> shards = entry.getValue();
-            downloadAndMergeByNode(nodeId, shards, hdfsWorkDir, indexName, localStateDir, chosenPaths);
+            downloadAndMergeByNode(nodeId, shards, hdfsWorkDir, indexName);
         });
         log.info("Wait all partition download and merge");
 //        try {
@@ -108,7 +106,7 @@ public class IndexBuilder {
 
     private void downloadAndMergeByNode(String nodeId, List<String> shards,
                                         String hdfsWorkDir,
-                                        String indexName, Path localStateDir, Set<String> chosenPaths) {
+                                        String indexName) {
         log.info("build assion"+nodeId+" shards: " + shards);
         for (String shardId : shards) {
             ///data/data03/es/data/paic-elasticsearch/nodes/0
@@ -123,7 +121,7 @@ public class IndexBuilder {
             log.info("hdfs path is: " + srcPath);
             String workDir = Utils.sameDiskDir(workDirs, dataPath);
             String destPath = Paths.get(workDir, indexName, shardId).toString();
-            log.info("Chosen tmpwork dir is {}", workDir);
+            log.info("Chosen tmpwork dir is {}", destPath);
 
             log.info("Build index shard [{}] for node [{}]", shardId, nodeId);
             try {
@@ -138,12 +136,9 @@ public class IndexBuilder {
                     String localHdfsFile = Paths.get(finalIndexPath).getParent().toString();
 //                destPath
                     moveLuceneToESDataDir(indexName, shardId, dataPath, finalIndexPath);
-                    //delete tmp dir:custom_test_20191290/29/
-                    log.info("delete localHdfsFile: "+localHdfsFile);
-                    if (localHdfsFile.contains(indexName)){
-                        Utils.deleteDir(localHdfsFile);
-                    }
                 }
+                //delete local hdfs file dir
+                Files.delete(Paths.get(destPath).getParent());
 
             } catch (IOException e) {
                 log.error(
