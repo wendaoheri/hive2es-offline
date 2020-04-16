@@ -190,8 +190,6 @@ public class NodeService {
         int numberShards = configData.getInteger("numberShards");
         esClient.createIndexFirst(indexName, 0, numberShards);
         log.info("create index finished: " + indexName + "---" + "--" + numberShards);
-        //add mapping
-        // tmp/es/custom_201912184/mapping.json
         String mappingString = null;
         try {
             mappingString = hdfsClient.readMappingJson(Paths
@@ -204,7 +202,6 @@ public class NodeService {
         } catch (InterruptedException e) {
             e.printStackTrace();
         }
-        log.info(mappingString.length() + "");
         esClient.putMapping(JSON.parseObject(mappingString), indexName, configData.getString("typeName"));
 
 

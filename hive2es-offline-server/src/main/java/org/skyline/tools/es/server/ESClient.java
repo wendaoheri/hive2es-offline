@@ -182,8 +182,10 @@ public class ESClient {
 
     public void triggerClusterChange(String indexName) {
         //TODO:Maybe should try a more elegant way to trigger
-        client.admin().indices().prepareClose(indexName);
-        client.admin().indices().prepareOpen(indexName);
+        boolean closeResult = client.admin().indices().prepareClose(indexName).get().isAcknowledged();
+        log.info("close index: "+indexName+" is success or not:"+closeResult);
+        boolean openResult = client.admin().indices().prepareOpen(indexName).get().isAcknowledged();
+        log.info("open index: "+indexName+" is success or not:"+openResult);
     }
 
     public boolean indexExists(String indexName) {

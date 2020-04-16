@@ -151,33 +151,11 @@ public class HdfsClient {
     }
 
     public String readMappingJson(String filePath) throws IOException, InterruptedException {
-        int i = Utils.downloadHdfsFile(filePath);
+        Utils.downloadHdfsFile(filePath);
         log.info("download file finished");
-//        FileInputStream fileInputStream = new FileInputStream("mappings.json");
-//        log.info("file input stream");
-//        InputStreamReader inputStreamReader = new InputStreamReader(fileInputStream);
-//        log.info("input reader");
-//        BufferedReader bufferedReader = new BufferedReader(inputStreamReader);
-//        log.info("buffer reader");
-//        String mappingStr = bufferedReader.readLine();
         String mappingStr = new String(Files.readAllBytes(Paths.get("/appcom/home/hadoop/DSP-HBD-JAD-HIVE2ES-OFFLINE-SERVER/apps/mapping.json")));
-        log.info(mappingStr);
 
         return mappingStr;
-//        Path mapPath = new Path(filePath);
-//        Path localpath = new Path("mappings.json");
-//        java.nio.file.Path path = Paths.get("mappings.json");
-//        if (Files.exists(path)){
-//            Files.delete(path);
-//        }
-//        fs.copyToLocalFile(mapPath,localpath);
-//        String mappingStr = new String(Files.readAllBytes(Paths.get("mapping.json")));
-//        log.info(mappingStr.length()+"");
-//        //获取文件内容
-//        if (Files.exists(path)){
-//            Files.delete(path);
-//        }
-//        return mappingStr;
     }
 
 
