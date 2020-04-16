@@ -110,14 +110,13 @@ public class NodeService {
                 registryCenter.persist(indexPath + "/" + ASSIGN_FLAG, "");
             }
             Map<String, List<String>> currentNodeShards = getCurrentNodeShards(indexPath, indexNodePath);
-            log.info("id2Shards: " + currentNodeShards);
+            log.info(indexNodePath+"'s id2Shards: " + currentNodeShards);
             if (MapUtils.isNotEmpty(currentNodeShards)) {
-                log.info("Current node shards is : {}", currentNodeShards);
                 if (MapUtils.isNotEmpty(currentNodeShards)) {
                     boolean success = indexBuilder.build(currentNodeShards, configData);
                     if (success) {
                         //TODO is to delete es node Path
-//                        registryCenter.delete(indexNodePath);
+                        registryCenter.delete(indexNodePath);
                         log.info("Build index for {} complete", indexNodePath);
                     }
                 }

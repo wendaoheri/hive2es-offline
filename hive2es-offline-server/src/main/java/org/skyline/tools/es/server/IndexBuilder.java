@@ -109,15 +109,12 @@ public class IndexBuilder {
     private void downloadAndMergeByNode(String nodeId, List<String> shards,
                                         String hdfsWorkDir,
                                         String indexName, Path localStateDir, Set<String> chosenPaths) {
-        log.info("Submit download and merge index task for node [{}]", nodeId);
-        log.info("assion shards: " + shards.size() + ":" + shards);
-//        shards.forEach(shardId -> processTaskExecutor.submit(() -> {
+        log.info("build assion"+nodeId+" shards: " + shards);
         for (String shardId : shards) {
             ///data/data03/es/data/paic-elasticsearch/nodes/0
             ///data/data03/es/data/paic-elasticsearch/nodes/0/indices/stock_20200324/0/index
             log.info(indexName + ":" + shardId + "-" + Integer.getInteger(shardId));
             String dataPath = esClient.getShardDataPath(indexName, new Integer(shardId));
-            log.info("es's data path is: " + dataPath);
             // 选择最空闲的一个路径放索引
 //            chosenPaths.add(dataPath);
             log.info("Most free data dir is {}", dataPath);
