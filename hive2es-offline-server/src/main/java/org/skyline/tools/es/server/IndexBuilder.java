@@ -138,8 +138,7 @@ public class IndexBuilder {
                     moveLuceneToESDataDir(indexName, shardId, dataPath, finalIndexPath);
                 }
                 //delete local hdfs file dir
-                Utils.deleteDir(Paths.get(destPath).getParent().toString())
-                Files.delete(Paths.get(destPath).getParent());
+                Utils.deleteDir(Paths.get(destPath).getParent().toString());
 
             } catch (IOException e) {
                 log.error(
