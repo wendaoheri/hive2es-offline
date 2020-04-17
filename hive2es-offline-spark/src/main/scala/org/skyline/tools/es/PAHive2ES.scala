@@ -10,7 +10,7 @@ import org.apache.commons.lang3.StringUtils
 import org.apache.commons.logging.LogFactory
 import org.apache.spark.TaskContext
 import org.apache.spark.sql.SparkSession
-import org.apache.spark.sql.types.MapType
+import org.apache.spark.sql.types.{ArrayType, MapType}
 import org.json4s.DefaultFormats
 import org.json4s.jackson.Serialization.writePretty
 import org.skyline.tools.es.ArgsParser.{Config, argsParser}
@@ -18,9 +18,7 @@ import org.skyline.tools.es.ArgsParser.{Config, argsParser}
 
 object PAHive2ES {
 
-
   @transient private lazy val log = LogFactory.getLog(getClass)
-
 
   def main(args: Array[String]): Unit = {
     argsParser.parse(args, Config()) match {
@@ -64,7 +62,6 @@ object PAHive2ES {
       }
       true
     }
-
 
     val dataTypeMappingSql =
       s"""
@@ -112,7 +109,13 @@ object PAHive2ES {
               })
             } else Seq()
           }
-          case _ => Seq((f.name, (f.dataType.simpleString, true, f.name)))
+          //add array
+          case x:ArrayType => {
+            val arrayValue = r.getAs[Array[Object]](f.name)
+            val arrayFiledName = f.name.toLowerCase.trim.replaceAll("&", "-").replaceAll("\\$", "-")
+            Seq((arrayFiledName,(f.dataType.simpleString,true,arrayFiledName)))
+          }
+          case _ => Seq( (f.name, (f.dataType.simpleString, true, f.name)) )
         }
       })
     }).filter(_._1 != null).distinct().collect()
