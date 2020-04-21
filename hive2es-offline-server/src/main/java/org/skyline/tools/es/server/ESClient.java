@@ -1,7 +1,6 @@
 package org.skyline.tools.es.server;
 
 import com.alibaba.fastjson.JSONObject;
-import com.carrotsearch.hppc.cursors.IntCursor;
 import com.google.common.collect.Maps;
 
 import java.net.SocketException;
@@ -9,21 +8,16 @@ import java.net.UnknownHostException;
 import java.util.*;
 
 import lombok.extern.slf4j.Slf4j;
-import lombok.val;
 import org.apache.commons.compress.utils.Lists;
 import org.elasticsearch.action.admin.cluster.node.info.NodeInfo;
 import org.elasticsearch.action.admin.cluster.node.info.NodesInfoResponse;
 import org.elasticsearch.action.admin.cluster.node.stats.NodesStatsResponse;
 import org.elasticsearch.action.admin.cluster.shards.ClusterSearchShardsGroup;
-import org.elasticsearch.action.admin.indices.create.CreateIndexRequestBuilder;
-import org.elasticsearch.action.admin.indices.create.CreateIndexResponse;
-import org.elasticsearch.action.admin.indices.get.GetIndexResponse;
 import org.elasticsearch.action.admin.indices.shards.IndicesShardStoresResponse;
 import org.elasticsearch.action.admin.indices.shards.IndicesShardStoresResponse.StoreStatus;
 import org.elasticsearch.action.admin.indices.stats.ShardStats;
-import org.elasticsearch.action.exists.ExistsResponse;
-import org.elasticsearch.action.search.SearchResponse;
 import org.elasticsearch.client.transport.TransportClient;
+import org.elasticsearch.cluster.ClusterState;
 import org.elasticsearch.cluster.node.DiscoveryNode;
 import org.elasticsearch.cluster.routing.ShardRouting;
 import org.elasticsearch.cluster.routing.allocation.command.MoveAllocationCommand;
@@ -135,6 +129,25 @@ public class ESClient {
         client.admin().indices().preparePutMapping(indexName).setType(typeName).setSource(root).execute().actionGet();
         log.info("put mapping end");
     }
+
+    public void updateReplicNum(String indexName,int replicNum){
+        log.info("update shard's replic num to:"+replicNum);
+        Settings settings = Settings.builder()
+                .put("number_of_replicas", replicNum).build();
+        boolean acknowledged = client.admin().indices().prepareUpdateSettings(indexName).setSettings(settings)
+                .execute().actionGet().isAcknowledged();
+        log.info("update shard replic num:"+replicNum+" result is:"+acknowledged);
+    }
+
+//    GREEN((byte) 0), YELLOW((byte) 1), RED((byte) 2);
+    public byte getESClusterState(String indexName){
+        ClusterState state = client.admin().cluster().prepareState().get().getState();
+        byte value = client.admin().cluster().prepareHealth(indexName).get().getStatus().value();
+
+        return value;
+
+    }
+
 
     //**************  change1 end **************************************
 

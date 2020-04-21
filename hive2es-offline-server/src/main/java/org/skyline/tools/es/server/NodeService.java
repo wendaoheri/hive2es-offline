@@ -33,6 +33,8 @@ public class NodeService {
 
     private static final String NODE_PATH = "nodes";
     private static final String ES_NODE_JOINER = ",";
+    private static final int SHARD_REPLIC_NUMS = 2;
+
     @Autowired
     private RegistryCenter registryCenter;
 
@@ -138,6 +140,16 @@ public class NodeService {
                 }
                 registryCenter.delete(indexPath);
                 log.info("Build index for {} all complete", indexPath);
+
+                while (esClient.getESClusterState(indexName) != 0){
+                    try {
+                        Thread.sleep(1000);
+                        log.info("cluster's health isn't green ,sleep 1000 ms");
+                    } catch (InterruptedException e) {
+                        log.error("get es cluster health error", e);
+                    }
+                }
+                esClient.updateReplicNum(indexName,SHARD_REPLIC_NUMS);
             }
         }).start();
     }
