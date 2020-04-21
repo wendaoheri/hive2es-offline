@@ -1,6 +1,7 @@
 package org.skyline.tools.es.server;
 
 import com.alibaba.fastjson.JSONObject;
+import com.carrotsearch.hppc.cursors.ObjectObjectCursor;
 import com.google.common.collect.Maps;
 
 import java.net.SocketException;
@@ -18,10 +19,12 @@ import org.elasticsearch.action.admin.indices.shards.IndicesShardStoresResponse.
 import org.elasticsearch.action.admin.indices.stats.ShardStats;
 import org.elasticsearch.client.transport.TransportClient;
 import org.elasticsearch.cluster.ClusterState;
+import org.elasticsearch.cluster.metadata.AliasMetaData;
 import org.elasticsearch.cluster.node.DiscoveryNode;
 import org.elasticsearch.cluster.routing.ShardRouting;
 import org.elasticsearch.cluster.routing.allocation.command.MoveAllocationCommand;
 import org.elasticsearch.common.collect.ImmutableOpenIntMap;
+import org.elasticsearch.common.collect.ImmutableOpenMap;
 import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.index.shard.ShardId;
 import org.elasticsearch.monitor.fs.FsInfo.Path;
@@ -145,6 +148,24 @@ public class ESClient {
         byte value = client.admin().cluster().prepareHealth(indexName).get().getStatus().value();
 
         return value;
+
+    }
+
+    public void updateAlies(String indexName,String alies){
+        ImmutableOpenMap<String, List<AliasMetaData>> aliasesMap =
+                client.admin().indices().prepareGetAliases().get().getAliases();
+
+        for (ObjectObjectCursor<String, List<AliasMetaData>> index2Aliases : aliasesMap) {
+            String index = index2Aliases.key;
+            if (index.equals(indexName)){
+                String alias = index2Aliases.value.get(0).getAlias();
+                boolean removeResult = client.admin().indices().prepareAliases().removeAlias(index, alias).get().isAcknowledged();
+                log.info("remove alias: "+alias+" from index: "+index+" action: "+removeResult);
+                boolean addResult = client.admin().indices().prepareAliases().addAlias(indexName, alias).get().isAcknowledged();
+                log.info("add alias: "+alias+" to index: "+indexName+" action: "+addResult);
+                break;
+            }
+        }
 
     }
 
