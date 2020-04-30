@@ -21,7 +21,7 @@
     <elasticsearch.version>2.3.2</elasticsearch.version>
     <commons.compress.version>1.19</commons.compress.version>
     <curator.version>4.2.0</curator.version>
-    <zookeeper.version>3.4.11</zookeeper.version>
+    <zookeeper.version>3.4.14</zookeeper.version>
     <hadoop.version>2.7.7</hadoop.version>
   </properties>
   <dependencyManagement>
